@@ -1,0 +1,135 @@
+```{r}
+library(tidyverse)
+library(knitr)
+library(kableExtra)
+library(lubridate)
+library(googleVis)
+```
+
+
+```{r eval=FALSE}
+#programme_board <-c("Sample_Programme")
+#tasks_states <- "./tasks_states.csv"
+#trello_key <- "./trello_secret.txt"
+source("trello.R", echo = F, prompt.echo = "", spaced = F)
+rm(programme_board,tasks_states,trello_key)
+rm(list=lsf.str())
+save.image("Normalised_Data.RData")
+```
+
+
+```{r}
+load(("Normalised_Data.RData"))
+normalised_data$projects
+```
+```{r}
+    normalised_data$projects %>% filter(State=="Backlog") %>%
+      select(labels,Name) %>%
+      mutate(Backlog=cell_spec(Name, color = ifelse(labels=="green", "green", "purple"))) %>%
+      select(Backlog) %>%
+       kable(format = "html", escape = F) %>%
+  kable_styling("striped", full_width = F)
+```
+
+
+
+```{r}
+
+status_colours <- tibble(colour=c("NA","green","amber","red","grey"),
+                         hex=c("purple","green","orange","red","#171921"))
+project_kanban_background <- tibble(colour=c("Backlog","Planning","Active","Complete"),
+                         hex=c("background-color:#EAE8FF;","background-color:#D8D5DB;","background-color:#ADACB5;",
+                               "background-color:#2D3142;"))
+
+normalised_data$projects  %>%
+        select(labels,State,Name) %>%
+        mutate(colour=ifelse(State=="Complete","grey",labels)) %>%
+        left_join(status_colours,by="colour") %>%
+        mutate(Name=cell_spec(Name, color="white",background = hex)) %>% select(Name) %>%
+        kable(format = "html", escape = F,col.names = NULL) %>%
+    kable_styling("striped", full_width = F)
+```
+
+
+```{r}
+project_kanban_background %>% filter(state=="Backlog") %>% pull(hex)
+```
+
+
+```{r}
+
+status_colours <- tibble(colour=c("NA","green","amber","red","grey"),
+                         hex=c("purple","green","orange","red","#171921"))
+project_kanban_background <- tibble(state=c("Backlog","Planning","Active","Complete"),
+                                    hex=c("#EAE8FF;","#D8D5DB;","#ADACB5;",
+                                          "#2D3142;"))
+ projects_kanban <- normalised_data$projects  %>%
+     select(labels,State,Name) %>%
+     mutate(colour=ifelse(State=="Complete","grey",labels)) %>%
+     left_join(status_colours,by="colour") %>%
+     mutate(Pres_Name=cell_spec(Name, color="white",background = hex))    
+   
+state <- "Backlog"
+projects_kanban  %>% mutate(Name=ifelse(State==state,Name,""),
+                            Pres_Name=ifelse(State==state,Pres_Name,
+                                             cell_spec("", color="white",background = (project_kanban_background %>% filter(state=="Backlog") %>% pull(hex))))) %>%
+         arrange(desc(Name)) %>% 
+        select(Pres_Name) %>%
+          kable(format = "html", escape = F,col.names = NULL) %>%
+        kable_styling("striped", full_width = F)
+   
+```
+
+
+
+```{r}
+
+project_kanban_background
+p<- normalised_data$projects %>% select(Name,State,due) %>% 
+    mutate(start=Sys.Date(),
+          end=as_date(ifelse(is.na(due),Sys.Date(),due))) %>%
+          select(Name,start,end)
+
+status_colours <- tibble(colour=c("NA","green","amber","red","grey"),
+                         hex=c("purple","green","orange","red","#171921"))
+
+Timeline <- gvisTimeline(data=p, 
+                         rowlabel="Name",
+                    #     barlabel="Position",
+                         start="start", 
+                         end="end",
+                         options=list(timeline="{groupByRowLabel:false}",
+                                      backgroundColor='#ffd', 
+                                      height=350,
+                                      width = 500,
+                                      colors="['#cbb69d', '#603913', '#c69c6e']"))
+plot(Timeline)
+
+```
+
+
+
+```{r}
+library(plotly)
+library(vistime)
+
+project_kanban_background <- tibble(State=c("Backlog","Planning","Active","Complete"),
+                                    hex=c("#EAE8FF","#D8D5DB","#ADACB5","#2D3142"))
+status_colours <- tibble(colour=c("NA","green","amber","red","grey"),
+                         hex=c("purple","green","orange","red","#171921"))
+
+p<- normalised_data$projects %>% select(Name,State,due,labels) %>% 
+    mutate(start=Sys.Date(),
+          end=as_date(ifelse(is.na(due),Sys.Date(),due))) %>%
+  left_join((project_kanban_background %>% select(State,fontcolor=hex)),by="State") %>%
+  left_join((status_colours %>% select(labels=colour,color=hex)),by="labels") %>%
+  filter(!(State=="Complete")) %>%
+  select(event=Name,start,end,fontcolor,color,group=State) 
+  
+
+
+          
+
+vistime(p, title="Timeline")
+```
+

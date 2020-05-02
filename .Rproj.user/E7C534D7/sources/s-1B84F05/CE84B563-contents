@@ -1,0 +1,389 @@
+---
+title: "Inequality in Chile"
+output:
+  html_document:
+    highlight: tango
+    keep_md: yes
+    theme: yeti
+---
+
+
+```{r r_setup,  include=FALSE}
+#Load Libraries
+library(tidyverse)
+library(readxl)
+library(httr)
+library(highcharter)
+library(knitr)
+library(kableExtra)
+knitr::opts_chunk$set(echo = TRUE,warning=FALSE)
+
+options(digits=2)
+options(knitr.table.format = "html") 
+options(warning=FALSE)
+
+```
+
+```{r download_file, include=FALSE}
+#Load data from WIID's website
+
+url1 <- "https://www.wider.unu.edu/sites/default/files/WIID/WIID_19Dec2018.xlsx"
+GET(url1, write_disk(tf <- tempfile(fileext = ".xlsx")))
+wiid <- read_excel(tf)
+unlink(tf)
+```
+
+[//]: # some html
+<base target="_parent">
+
+[//]: # TLDR to be included in WordPress post
+[//]: # > **tldr:** Yes, income is distributed unequally in Chile. This is especially true when compared with *developed nations* but it is not unique - countries in Latin America have the same issue. Observed by income deciles, there is an acute gap between the poorest and wealthiest groups. However, we need to acknowledge that both inequality and income for all groups have only become better in the last 25 years - Chile is a success story. There is room and resources to address the most acute differences today - the challenge in the long term is how to grow in a way that wealth is better distributed.
+
+
+[//]: # ## Introduction and disclaimer
+
+On the 18th October 2019, violent demonstrations erupted in Santiago de Chile. Demonstrations rapidly spread across several cities, and it has been the most extended period of protest since 1990, with extraordinary violence for the country's standards. 
+
+Perhaps in similar ways to recent phenomena in other parts of the world,reasons are somewhat baffling. The media and experts have long called Chile a success story. In the last thirty years, the country has moved from *poor* to *high income* and its citizens enjoy living standards above the continent's average. However, the story told by the discontent talks of a highly unequal country, where the majority of the population only gets poorer and the rich become even richer.
+
+Looking at the data of the **[World Income Inequality Database ](https://www.wider.unu.edu/project/wiid-world-income-inequality-database)** collated by the **United Nations University World Institute for Development Economics Research** (UNU-WIDER), the below lines try to explain the story. Please note the author is not a social scientist, economist, or related - just an engineer attempting to make sense of the whole situation ...
+
+
+
+```{r wrangling, include=FALSE}
+# Preparing the data for visualisation
+
+#shortening names of countries
+
+long_country_names = tibble(country=c("Macedonia, former Yugoslav Republic of","Serbia and Montenegro","West Bank and Gaza","Hong Kong (China)","Korea, Republic of","Dominican Republic"),
+new_name=as.character(c("N. Macedonia","Serbia","Palestine","Hong Kong","South Korea","Dominican Rep.")))
+
+#choosing base data to compare - Income (net/gross) 
+comparison_base <- wiid %>% filter(resource =="Income (net/gross)") %>% merge(x=.,y=long_country_names,by="country",all.x=TRUE) %>% mutate(country=ifelse(is.na(new_name),country,new_name),gdp_ppp_base=gdp_ppp_pc_usd2011/100) %>% select(-new_name) %>% mutate(year_key=paste(country, year,sep=" "))
+
+#### Create tidied up table to compare quintiles - used for exploratory analysis
+#comparison_qui <- comparison_base  %>% select(country,year,q1,q2,q3,q4,q5,incomegroup,gdp_ppp_base,gdp_ppp_pc_usd2011,year_key) %>% gather("quintile","share",q1,q2,q3,q4,q5) %>% mutate(gdp_ppp=gdp_ppp_base*share*5,key = paste(country, quintile,sep=" "))  %>% filter(!is.na(share))  %>% select(-gdp_ppp_base)
+
+# Create tidied up table to compare deciles
+comparison_dec <- comparison_base  %>% select(country,year,d1,d2,d3,d4,d5,d6,d7,d8,d9,d10,incomegroup,gdp_ppp_base,gdp_ppp_pc_usd2011,year_key) %>% gather("decile","share",d1,d2,d3,d4,d5,d6,d7,d8,d9,d10) %>% mutate(gdp_ppp=gdp_ppp_base*share*10,key = paste(country, decile,sep=" "))  %>% filter(!is.na(share)) %>%  select(-gdp_ppp_base)
+
+###colour schemes
+#lists of countries and colours in graphs
+other_country_colour <- "#E5E4E2"
+Chile_colour <- "#F62817"
+
+countries_1 <- c("Chile","Portugal","Italy")
+colours_1 <-c(Chile_colour,"#e056fd","#FDD017")
+country_colours_1 <- tibble(country=countries_1,colour=as.character(colours_1))
+
+countries_2 <- append(countries_1,c("Brazil","South Korea","Spain","Argentina","Germany", "India","United States","Finland"))
+colours_2 <- c(colours_1,"#f6e58d","#ffbe76","#ff7979","#badc58","#dff9fb","#7ed6df","#EAD2AC","#686de0")
+
+country_colours_2 <- tibble(country=countries_2,colour=as.character(colours_2))
+
+#extra colours ,"#E0B0FF","#2B65EC"
+income_list<- c("Chile","High income","Upper middle income","Lower middle income","Low income")
+colours_3 <- c(Chile_colour,"#4281A4","#9CAFB7","#EAD2AC","#E6B89C")
+income_colours <- tibble(incomegroup2=income_list,colour=as.character(colours_3))
+
+colours_4 <- c("#f6e58d","#ffbe76","#ff7979","#badc58","#dff9fb","#7ed6df","#e056fd","#686de0","#30336b","#95afc0")
+deciles <- c("d1","d2","d3","d4","d5","d6","d7","d8","d9","d10")
+
+decile_colours <-tibble(decile=deciles,colour=as.character(colours_4))
+
+year_range_1 <-2010:2018
+year_range_2 <- 1990:1995
+
+#get latest year per country
+
+year_selector_1 <-comparison_base %>% mutate(year_in_range=ifelse(year %in% year_range_1,"Yes","No")) %>% select (country,year_in_range,year) %>%  filter(year_in_range=="Yes") %>% group_by(country) %>% summarise(year=max(year)) %>% ungroup() %>%  mutate(year_key=paste(country, year,sep=" "))
+
+year_selector_2 <-comparison_base %>% mutate(year_in_range=ifelse(year %in% year_range_2,"Yes","No")) %>% select (country,year_in_range,year) %>%  filter(year_in_range=="Yes") %>% group_by(country) %>% summarise(year=max(year)) %>% ungroup() %>%  mutate(year_key=paste(country, year,sep=" "))
+
+#comparison years for Chile
+year1<-1990
+year2<-2015
+
+```
+
+## Inequality as measured by the Gini Coefficient
+
+To start, let's look at the most known measurement for inequality, the [Gini Coefficient](https://en.wikipedia.org/wiki/Gini_coefficient). The below chart is the result of  plotting this number against the GDP per capita of several countries including <font color="`r colours_1[which("Chile" == countries_1)]`">Chile</font>:
+
+
+```{r gini_index,echo=FALSE}
+#create Tooltip
+
+x <- c("Country","Income Group", "GDP PPP per capita", "Gini index","Year Reported")
+y <-c("{point.country}","{point.incomegroup}", "{point.gdp_ppp_pc:d,.0f}", "{point.gini:.2f}","{point.year}")
+tltip <- tooltip_table(x, y)
+plot_title <- "GDP per capita and Gini Coefficient"
+x_label <- "GDP Per Capita (US 2011)"
+y_label <- "Gini Coefficient"
+
+
+
+plot_data <- comparison_base %>% filter(year_key %in% year_selector_1$year_key) %>% select(country,year,incomegroup,year_key,gini_reported,gdp_ppp_pc_usd2011) %>% group_by(country,year,incomegroup,year_key) %>% summarise(gini=mean(gini_reported),gdp_ppp_pc=mean(gdp_ppp_pc_usd2011)) %>% ungroup() %>% mutate(incomegroup2=ifelse(country=="Chile","Chile",incomegroup)) %>% arrange(-gdp_ppp_pc) 
+
+#for future reference
+countries_gini <- plot_data$country
+
+
+
+plot_data  %>% hchart("scatter", hcaes(y = gini, x = gdp_ppp_pc,group=incomegroup2)) %>% hc_tooltip(useHTML = TRUE, headerFormat = "", pointFormat = tltip) %>%  hc_exporting( enabled = TRUE) %>%  hc_xAxis(title = list(text = x_label),opposite = FALSE,labels = list(rotation=-90)) %>% hc_yAxis(title = list(text = y_label), opposite = FALSE, minorTickInterval = "auto", minorGridLineDashStyle = "LongDashDotDot",showFirstLabel = FALSE,showLastLabel = FALSE, plotBands = list(list(from = 25, to = JS("Infinity"), color = "rgba(100, 0, 0, 0.1)"))) %>% hc_title(text = plot_title, margin = 20, align = "left",style = list(color = "#808080", useHTML = TRUE)) %>%  hc_credits(enabled = TRUE,  text = "Source: World Income Inequality Database - UNU-WIDER",href = "https://www.wider.unu.edu/project/wiid-world-income-inequality-database")  %>% hc_colors(colours_3[match(sort(unique(plot_data$incomegroup2)),income_list)])
+
+
+```
+
+
+From the above chart, it is quite clear that <font color="`r colours_1[which("Chile" == countries_1)]`">Chile's</font> index is higher than most of the other <font color="`r colours_3[which("High income" == income_list)]`"> high income countries</font>. However, this is far from unique and seems to be common of other countries in Latin America. It is also worth noticing although this higher value, Chile is not big outlier when looking at the Gini index as a function of the income.
+
+As all single statistical measurements, this is obviously a generalisation and although it gives a general idea, it perhaps does not reflect the complexity of the country. What does this mean exactly, in terms of relative and absolute income?
+
+## Narrowing down the inequality 
+
+For several countries, WIID provides the share of the pie for each income decile. In the database, they are called D1..D10, where <font color="`r colours_4[which("d1" == deciles)]`">D1</font> is the lowest earning decile and <font color="`r colours_4[which("d10" == deciles)]`">D10</font> the one attracting the higher incomes. If we look at the decile distribution for selected countries, it is possible to create the below graph:
+
+```{r deciles_compared, echo=FALSE}
+
+
+x <- c("Country","Income Group", "GDP PPP per capita for Decile","GDP PPP per capita Country", "Year Reported")
+y <-c("{point.country}","{point.incomegroup}", "{point.gdp_ppp:d,.0f}","{point.gdp_ppp_t:d,.0f}","{point.year}")
+tltip <- tooltip_table(x, y)
+plot_title <- "Share of National GDP per income decile"
+x_label <- "Country"
+y_label <- "Share of GDP (%)"
+
+plot_data <- comparison_dec %>% filter(year_key %in% year_selector_1$year_key) %>% select(country,year,incomegroup,year_key,decile,share) %>% group_by(country,year,incomegroup,year_key,decile) %>% summarise(share=mean(share)) %>% ungroup() %>% filter(country %in% countries_2) %>% spread(decile,share)
+ 
+
+highchart() %>% 
+  hc_chart(type = "column") %>%
+  hc_plotOptions(column = list(stacking = "normal")) %>%
+  hc_xAxis(categories = plot_data$country) %>%
+  hc_add_series(name="D1",
+                data = (plot_data$d1),
+                stack="Share",
+                color = decile_colours$colour[1])%>%
+  hc_add_series(name="D2",
+                data = (plot_data$d2),
+                stack = "Share",
+                color = decile_colours$colour[2])%>%
+  hc_add_series(name="D3",
+                data = (plot_data$d3),
+                stack = "Share",
+                color = decile_colours$colour[3])%>%
+  hc_add_series(name="D4",
+                data = (plot_data$d4),
+                stack = "Share",
+                color = decile_colours$colour[4])%>%
+  hc_add_series(name="D5",
+                data = (plot_data$d5),
+                stack = "Share",
+                color = decile_colours$colour[5])%>%
+  hc_add_series(name="D6",
+                data = (plot_data$d6),
+                stack = "Share",
+                color = decile_colours$colour[6])%>%
+  hc_add_series(name="D7",
+                data = (plot_data$d7),
+                stack = "Share",
+                color = decile_colours$colour[7])%>%
+  hc_add_series(name="D8",
+                data = (plot_data$d8),
+                stack = "Share",
+                color = decile_colours$colour[8])%>%
+  hc_add_series(name="D9",
+                data = (plot_data$d9),
+                stack = "Share",
+                color = decile_colours$colour[9])%>%
+  hc_add_series(name="D10",
+                data = (plot_data$d10),
+                stack = "Share",
+                color = decile_colours$colour[10]) %>%
+hc_exporting( enabled = TRUE) %>%  hc_xAxis(title = list(text = x_label),opposite = FALSE,labels = list(rotation=-90)) %>% hc_yAxis(title = list(text = y_label) ,max=100, opposite = FALSE, minorTickInterval = "auto", minorGridLineDashStyle = "LongDashDotDot",showFirstLabel = FALSE,showLastLabel = FALSE, plotBands = list(list(from = 25, to = JS("Infinity"), color = "rgba(100, 0, 0, 0.1)"))) %>% hc_title(text = plot_title, margin = 20, align = "left",style = list(color = "#808080", useHTML = TRUE)) %>%  hc_credits(enabled = TRUE,  text = "Source: World Income Inequality Database - UNU-WIDER",href = "https://www.wider.unu.edu/project/wiid-world-income-inequality-database") 
+
+
+```
+
+As expected, this is consistent with the Gini index. Latin American countries show a higher concentration by the wealthiest ten percent. Proportionally speaking, it seems this difference with the *developed* nations is at the expense of all the other deciles but especially against the *lowest-earning* population groups. 
+
+Another way to look at this is to calculate the equivalent GDP PPP per capita for each decile and see how much bigger is the income of D10 compared to the rest. The below graph represents this:
+
+
+```{r deciles_compared2,  echo=FALSE}
+options(digits=3)
+
+x <- c("Country", "Decile", "D10 Ratio","Year Reported")
+y <-c("{point.country}", "{point.decile}", "{point.ratio_D10:.2f}","{point.year}")
+tltip <- tooltip_table(x, y)
+plot_title <- "GDP per capita of highest earning decile  as ratio of other deciles"
+x_label <- "Country ordered by GDP PPP"
+y_label <- "D10 Ratio (D10/Dx)"
+
+
+plot_data <- comparison_dec %>% filter(year_key %in% year_selector_1$year_key) %>% group_by(country,year,decile,year_key) %>% summarise(share=mean(share), gdp_ppp=mean(gdp_ppp_pc_usd2011))  %>%  spread(decile,share) %>% mutate(d9=d10/d9,d8=d10/d8,d7=d10/d7,d6=d10/d6,d5=d10/d5,d4=d10/d4,d3=d10/d3,d2=d10/d2,d1=d10/d1)%>% ungroup() %>% select(-d10, -year_key) %>% gather("decile","ratio_D10",d1,d2,d3,d4,d5,d6,d7,d8,d9) %>% merge(x=.,y=country_colours_2,by="country",all.x=TRUE) %>% mutate(colour=ifelse(is.na(colour),other_country_colour,colour)) %>% arrange(gdp_ppp)  
+
+#data to plot, Haiti filtered for scaling
+
+max_values<-plot_data$ratio_D10[ !(plot_data$country=="Haiti")]
+max_y <- max(max_values)+3
+
+plot_data %>% hchart("scatter",hcaes(x =country, y = ratio_D10, color = colour)) %>% hc_tooltip(useHTML = TRUE, headerFormat = "", pointFormat = tltip) %>%  hc_exporting( enabled = TRUE) %>%  hc_xAxis(title = list(text = x_label),opposite = FALSE,labels = list(rotation=-90)) %>% hc_yAxis(title = list(text = y_label), max=max_y,opposite = FALSE, minorTickInterval = "auto", minorGridLineDashStyle = "LongDashDotDot",showFirstLabel = FALSE,showLastLabel = FALSE, plotBands = list(list(from = 25, to = JS("Infinity"), color = "rgba(100, 0, 0, 0.1)"))) %>% hc_title(text = plot_title, margin = 20, align = "left",style = list(color = "#808080", useHTML = TRUE)) %>%  hc_credits(enabled = TRUE,  text = "Source: World Income Inequality Database - UNU-WIDER",href = "https://www.wider.unu.edu/project/wiid-world-income-inequality-database") 
+```
+
+
+In this chart, it is apparent that <font color="`r colours_1[which("Chile" == countries_1)]`">Chile's</font> income distribution stands out against all wealthier countries many of the countries of similar income, where the differences are smaller. Even in a country with a similar D10/D1 ratio like the <font color="`r colours_1[which("United States" == countries_1)]`">United States</font>, the difference between all other deciles and the highest earning group is smaller. 
+
+When looked in terms of GDP per capita, the consequence of this is that although <font color="`r colours_1[which("Chile" == countries_1)]`">Chile's</font> wealthiest group enjoy an average GDP per capita similar to the wealthiest ten percent in <font color="`r colours_1[which("Italy" == countries_1)]`">Italy</font> and <font color="`r colours_1[which("Portugal" == countries_1)]`">Portugal</font>, there is a gap when other deciles are compared. Apart from the already mentioned wealthy/poor gap, the difference between the top and the middle is also comparatively bigger. As a result of this, the 2nd highest income decile in Chile maps to middle income in Rome and the Chilean middle would be *poor* in Lisbon. 
+
+
+```{r deciles_range, echo=FALSE}
+
+x <- c("Country", "Decile", "Decile's GDP PPP (per capita) ","Overall GDP PPP (per capita)")
+y <-c("{point.country}", "{point.decile}", "{point.gdp_ppp:d,.0f}","{point.overall_gdp_ppp:d,.0f}")
+tltip <- tooltip_table(x, y)
+plot_title <- "Income per decile compared"
+x_label <- "Country deciles ordered by GDP PPP"
+y_label <- "Per Capita Income"
+
+
+plot_data <- comparison_dec %>% filter(year_key %in% year_selector_1$year_key)   %>% group_by(country,year,decile,key) %>% summarise( gdp_ppp=mean(gdp_ppp), overall_gdp_ppp=mean(gdp_ppp_pc_usd2011)) %>% merge(x=.,y=country_colours_1,by="country",all.x=TRUE) %>% mutate(colour=ifelse(is.na(colour),other_country_colour,colour),country2=ifelse(colour==other_country_colour,"Other",country)) %>% arrange(gdp_ppp) 
+  
+max_values<-plot_data$gdp_ppp
+max_y <- max(max_values)+3
+
+plot_data %>%  hchart("coloredarea",hcaes(x = key, y = gdp_ppp, segmentColor = colour, color=country2),zoomType = "x")  %>% hc_tooltip(useHTML = TRUE, headerFormat = "", pointFormat = tltip) %>%  hc_exporting( enabled = TRUE) %>%  hc_xAxis(title = list(text = x_label),opposite = FALSE,labels = list(enabled=FALSE)) %>% hc_yAxis(title = list(text = y_label), max=max_y,opposite = FALSE, minorTickInterval = "auto", minorGridLineDashStyle = "LongDashDotDot",showFirstLabel = FALSE,showLastLabel = FALSE, plotBands = list(list(from = 25, to = JS("Infinity"), color = "rgba(100, 0, 0, 0.1)"))) %>% hc_title(text = plot_title, margin = 20, align = "left",style = list(color = "#808080", useHTML = TRUE)) %>%  hc_credits(enabled = TRUE,  text = "Source: World Income Inequality Database - UNU-WIDER",href = "https://www.wider.unu.edu/project/wiid-world-income-inequality-database") 
+```
+
+## However, big progress has taken place.
+
+All the above points notwithstanding, it is important to point that **<font color="`r colours_1[which("Chile" == countries_1)]`">Chile</font> has indeed progressed significantly in the last `r year2-year1` years**. Let's look at the evolution of the Gini coefficient and GDPP per capita, which seems to challenge the perception that growth has brought increased inequality
+
+
+```{r gini_index_play,echo=FALSE}
+#create Tooltip
+x <- c("Country","Income Group", "GDP PPP per capita", "Gini index","Year Reported")
+y <-c("{point.country}","{point.incomegroup}", "{point.gdp_ppp_pc:d,.0f}", "{point.gini:.2f}","{point.year}")
+tltip <- tooltip_table(x, y)
+plot_title <- "Changes GDP per capita and Gini Coefficient"
+x_label <- "GDP per capita"
+y_label <- "Gini Coefficient"
+
+
+plot_data <- comparison_base %>% filter(country %in% countries_2) %>% select(country,year,incomegroup,year_key,gini_reported,gdp_ppp_pc_usd2011) %>% group_by(country,year,incomegroup,year_key) %>% summarise(gini=mean(gini_reported),gdp_ppp_pc=mean(gdp_ppp_pc_usd2011)) %>% ungroup() %>% arrange(-gdp_ppp_pc) %>% filter(!(country=="India"))
+
+
+
+plot_data  %>% hchart("scatter", hcaes(y = gini, x = gdp_ppp_pc,group=country)) %>% hc_tooltip(useHTML = TRUE, headerFormat = "", pointFormat = tltip) %>%  hc_exporting( enabled = TRUE) %>%  hc_xAxis(title = list(text = x_label),opposite = FALSE,labels = list(rotation=-90)) %>% hc_yAxis(title = list(text = y_label), opposite = FALSE, minorTickInterval = "auto", minorGridLineDashStyle = "LongDashDotDot",showFirstLabel = FALSE,showLastLabel = FALSE, plotBands = list(list(from = 25, to = JS("Infinity"), color = "rgba(100, 0, 0, 0.1)"))) %>% hc_title(text = plot_title, margin = 20, align = "left",style = list(color = "#808080", useHTML = TRUE)) %>%  hc_credits(enabled = TRUE,  text = "Source: World Income Inequality Database - UNU-WIDER",href = "https://www.wider.unu.edu/project/wiid-world-income-inequality-database")  %>%  hc_colors(colours_2[match(sort(unique(plot_data$country)),countries_2)])
+```
+
+The data suggests:
+
+* Chile has outperformed regional neighbours <font color="`r colours_2[which("Argentina" == countries_2)]`">Argentina</font>  and <font color="`r colours_2[which("Brazil" == countries_2)]`">Brazil</font> combining growth while reducing inequality.
+* As shown by *developed* nations (e.g. <font color="`r colours_2[which("Finland" == countries_2)]`">Finland</font>, <font color="`r colours_2[which("Germany" == countries_2)]`">Germany</font>, <font color="`r colours_2[which("United States" == countries_2)]`">United States</font>), increases in national income doesn't guarantee that inequality will be reduced.
+
+When breaking Chile's decile data, it is clear that **improvement has been made across all deciles**. When looking at average GDP per capita, it is also clear that all groups have improved significantly. The country has moved out of the "middle income" group. **When we talk about inequality in the country today, it is equivalent to the gap within the European Union**. 
+
+```{r share_evolution_Chile , echo=FALSE}
+
+
+x <- c("Country", "Decile", "D10 Ratio","Year Reported")
+y <-c("{point.country}", "{point.decile}", "{point.ratio_D10:.2f}","{point.year}")
+tltip <- tooltip_table(x, y)
+plot_title <- "D10 Ratio (D10/Dx)"
+x_label <- "Year"
+y_label <- "D10 Ratio (D10/Dx)"
+
+
+plot_data <-  comparison_dec %>% select(country,year,decile,share) %>% group_by(country,year,decile) %>% summarise(share=mean(share))  %>%  spread(decile,share) %>% mutate(d9=d10/d9,d8=d10/d8,d7=d10/d7,d6=d10/d6,d5=d10/d5,d4=d10/d4,d3=d10/d3,d2=d10/d2,d1=d10/d1)%>% ungroup() %>% select(-d10) %>% gather("decile","ratio_D10",d1,d2,d3,d4,d5,d6,d7,d8,d9) %>% merge(x=.,y=decile_colours,by="decile",all.x=TRUE) %>% mutate(colour=ifelse(is.na(colour),other_country_colour,colour)) %>% arrange(-year,decile) 
+
+chosen_country<-"Chile"
+plot_data  %>% filter(country==chosen_country, year %in% 1990:2020) %>% hchart("line",hcaes(x =year, y = ratio_D10, group=decile, color = colour)) %>% hc_tooltip(useHTML = TRUE, headerFormat = "", pointFormat = tltip) %>%  hc_exporting( enabled = TRUE) %>%  hc_xAxis(title = list(text = x_label),opposite = FALSE,labels = list(rotation=-90)) %>% hc_yAxis(title = list(text = y_label), opposite = FALSE, minorTickInterval = "auto", minorGridLineDashStyle = "LongDashDotDot",showFirstLabel = FALSE,showLastLabel = FALSE, plotBands = list(list(from = 25, to = JS("Infinity"), color = "rgba(100, 0, 0, 0.1)"))) %>% hc_title(text = paste(plot_title,chosen_country,sep=" - "), margin = 20, align = "left",style = list(color = "#808080", useHTML = TRUE)) %>%  hc_credits(enabled = TRUE,  text = "Source: World Income Inequality Database - UNU-WIDER",href = "https://www.wider.unu.edu/project/wiid-world-income-inequality-database") 
+
+```
+
+
+```{r income_evolution , echo=FALSE}
+chosen_country <- "Chile"
+
+
+base_list <- comparison_dec %>%  mutate(key=paste(paste(country,decile,sep=" "),year,sep=" - ")) %>% select(key,country, decile, year,year_key,gdp_ppp)  %>% group_by(key,country, decile, year,year_key) %>% summarise(gdp_ppp=mean(gdp_ppp)) %>% ungroup() %>% arrange(-gdp_ppp) %>% mutate(decile=as.numeric(str_replace(decile,"d","")))
+
+
+
+year1_values<- base_list %>% filter(country == chosen_country & year == year1 ) %>% select(decile,gdp_ppp) %>% arrange(-decile)
+year2_values<- base_list %>% filter(country == chosen_country & year == year2 ) %>% select(decile,gdp_ppp) %>% arrange(-decile)
+
+comparison_year1<-base_list %>% filter(!(country == chosen_country) & (year_key %in% year_selector_2$year_key)) %>% select(gdp_ppp,key)
+comparison_year2<-base_list %>% filter(!(country == chosen_country) & (year_key %in% year_selector_1$year_key)) %>% select(gdp_ppp,key)
+
+
+comparison_y1_finder <- function(x){
+      distance<-abs(x-comparison_year1$gdp_ppp)
+      a <- comparison_year1$key[which.min(distance)]
+      b <- comparison_year1$key[which.min(distance)+1]
+      paste(a,"/ \n",b)
+}
+
+comparison_y2_finder <- function(x){
+      distance<-abs(x-comparison_year2$gdp_ppp)
+      a <- comparison_year2$key[which.min(distance)]
+      b <- comparison_year2$key[which.min(distance)+1]
+      paste(a,"/ \n",b)
+}
+
+
+data_plot <- year1_values  %>% merge(x=.,y=year2_values,by="decile") %>% mutate(like_year1=sapply(gdp_ppp.x,comparison_y1_finder),like_year2=sapply(gdp_ppp.y,comparison_y2_finder),growth=gdp_ppp.y*100/gdp_ppp.x) %>%  select(decile,gdp_ppp.x,gdp_ppp.y,growth,like_year1,like_year2) %>% mutate_if(is.numeric, format, digits=4,nsmall = 0,big.mark   = " ")
+
+
+data_plot %>% kable(col.names = c("Decile",                           paste("GDP PPP",year1,sep=" "),
+                         paste("GDP PPP",year2,sep=" "),
+                         "Growth (%)",
+                          paste("Comparison",year1,sep=" "),
+                        paste("Comparison",year2,sep=" "))) %>%
+   kable_styling(bootstrap_options = c("striped", "hover",full_width = F)) %>%
+  footnote(general = "Source: World Income Inequality Database - UNU-WIDER") %>%
+    column_spec(1, bold = T) %>%
+    column_spec(2:4, width = "60em") %>%
+    column_spec(5:6, width = "550em")
+
+```
+
+
+## (Unqualified opinion) How to move forward
+
+So, is Chile a success or failure story? Perhaps, like in many situations, both sides are right and wrong at the same time :) : 
+
+* Yes, Chile is a success story of economic growth. Development has resulted in improved GDP across the population.  Inequality shows a sustained reduction over the years.
+* Despite the progress, the disparity remains a problem. This problem is not unique to Chile but common to Latin American countries. 
+* This results in a situation where Chile's wealthiest ten percent are *rich country rich* but the rest of the population cannot compare themselves to the *wealthiest* nations - lower the income, starker the difference.
+* Nevertheless, all income groups have a comparison group within high-income countries. The difference here is the gap between being *wealthy* in a *rich* EU country and being *poor* in a *not-so-wealthy* EU nation. It is worth noticing that these differences in Europe come with migration - this is something not desirable, even taking into account the absolute income figures! 
+
+
+So, while acknowledging progress, Chile needs to take action to make sure this continues as a success case. In my unqualified opinion - but as someone with a vested interested and a vote - is that we need to (with a message to the wealthiest in the country):
+
+* Refrain the impulse to ditch everything. Looking at the numbers,  it looks like some things are right.
+* With **urgency**, address the big gap with the *poorest* income groups. It will necessarily mean that some people will need to reach into their pockets - if you are in this group, think you are *Europe* wealthy, and some sacrifices are necessary for the common good.
+* With **importance**, something needs to be kept growing in a way that the 90% moves up the ladder too. Research, education, venture capital, etc. - something needs to be done to generate new wealth in new groups. If you are Chilean millionaire, consider this as an investment and think that your peers in Germany hold a small portion of the pie, yet they are wealthier and have a better [quality of life](https://en.wikipedia.org/wiki/List_of_countries_by_inequality-adjusted_HDI)! This makes sense for everyone!
+
+
+## The details / Notes
+
+1. I don't have a degree in Social Sciences - this is just my personal opinion looking at the data and as a Chilean.
+2. Data comes from the [World Income Inequality Database](https://www.wider.unu.edu/project/wiid-world-income-inequality-database). They also publish a [User Guide](https://www.wider.unu.edu/sites/default/files/WIID/PDF/WIID4%20User%20Guide.pdf) and [Frequently Asked Questions](https://www.wider.unu.edu/about/frequently-asked-questions).
+3. Terms like *wealthy* and *poor* are used in their general sense and related to **income only**.
+4. *Inequality* here means wealth disparity.
+5. This has been created with RStudio, using [Highchart](https://www.highcharts.com/) and [KableExtra](https://cran.r-project.org/web/packages/kableExtra/vignettes/awesome_table_in_html.html). 
+6. Highcharts is used under a Non-Commercial Licence (Creative Commons Attribution-NonCommercial 3.0). All rights reserved.
+6. The author does not take any responsibility on how this data is used.  Don't believe in everything you read on the Internet! The link to the source data has been provided, so you can check if I've made a mistake.
+7. R  Notebook file available [here](https://github.com/carlosyanez/InequalityinChile/blob/master/Chiles_Inequality.Rmd)
+
+```{r cleanup,include=FALSE}
+#cleanup all objects, except data downloaded from WIID
+list<-ls() 
+files<-tibble(name=append(list,c("list","files")))
+files <- files %>% filter(!(name %in% c("wiid","comparison_base","comparison_dec")))
+rm(list=files$name) 
+```
+

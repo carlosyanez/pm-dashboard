@@ -1,0 +1,123 @@
+---
+title: "PM's Dashboard"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill
+    social: menu
+    theme: paper
+    source_code: embed
+runtime: shiny
+---
+
+
+```{r setup_libraries, include=FALSE}
+library(knitr)
+library(tidyverse)
+library(kableExtra)
+library(flexdashboard)
+library(shinyjs)
+useShinyjs(rmd = TRUE)
+library(plotly)
+library(lubridate)
+```
+
+
+```{r setup, include=FALSE}
+load("./Normalised_Data.RData")
+
+update_data <- function(){
+  source("trello.R", echo = F, prompt.echo = "", spaced = F)
+ # rm(programme_board,tasks_states,trello_key)
+  rm(list=lsf.str())
+  save.image("./Normalised_Data.RData")
+}
+```
+
+Start
+=====================================
+
+Inputs 1{.sidebar} 
+-------------------------------------
+
+Please press start button:
+
+```{r, echo=FALSE}
+
+# sidebar shiny start button
+actionButton("start_button", label="Reload Data")
+actionButton("refresh_button", label="Refresh Report")
+```
+
+Row  {data-height=1600}
+-----------------------------------------------------------------------
+
+```{r}
+# define reactive shiny function on button click
+
+visualization_function <- eventReactive(input$start_button, {
+            # with progress bar         
+            withProgress(message = 'Updating', value = 0, {
+            
+                        # increment progress bar
+                        incProgress(0.3)
+                        update_data()
+                        # stop eval to see progress bar long enough :)
+                        Sys.sleep(0.5)
+                         
+                        # make data from diamonds data sample
+                       # x <- tibble(x=1,y=1)
+                        # make interaactive plot
+                      #  p <- plot_ly(x,type = "bar") 
+                        a <- "Report Uploaded"
+                        
+                        
+                          
+            })
+})
+
+renderText({visualization_function()
+          
+            })
+
+
+```
+
+
+
+```{r}
+shinyjs::extendShinyjs(text = "shinyjs.refresh = function() { location.reload(); }")
+
+eventReactive(input$refresh, {
+      shinyjs::js$refresh()
+    })
+```
+
+
+Page 1
+==================
+
+Column {data-width=650}
+-----------------------------------------------------------------------
+Helllo
+### Chart A
+
+```{r}
+normalised_data$projects %>% pull(Name) %>% kable(caption="Projects",format = "html", booktabs = TRUE) %>%  kable_styling(position = "center")
+```
+
+Column {data-width=350}
+-----------------------------------------------------------------------
+
+### Chart B
+
+```{r}
+
+```
+
+### Chart C
+
+```{r}
+
+```
+

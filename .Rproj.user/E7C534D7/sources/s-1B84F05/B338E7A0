@@ -1,0 +1,25 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1587298613191.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "1479114052",
+    "id" : "B338E7A0",
+    "lastKnownWriteTime" : 1587912700,
+    "last_content_update" : 1587912700398,
+    "path" : "~/GitHub Projects/Trello_Dashboard/Trello_Dashboard.Rmd",
+    "project_path" : "Trello_Dashboard.Rmd",
+    "properties" : {
+        "cursorPosition" : "21,40",
+        "scrollLine" : "0"
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 1,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_markdown"
+}
