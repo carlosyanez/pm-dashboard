@@ -11,6 +11,8 @@ library(lubridate)
 programme_board <-c("Sample_Programme")
 tasks_states <- "tasks_states.csv"
 trello_key <- "trello_secret.txt"
+RAG_replace <- tibble(colour=c("red","amber","green"),
+                      letter=c("R","A","G"))
 ####
 
 ###get token
@@ -292,7 +294,10 @@ trello_normalise <-function(trello,programme_board,tasks_states_file){
            Impact = gsub(x = Impact, pattern = "Impact:", replacement = ""),
            Action = gsub(x = Action, pattern = "Action:", replacement = "")) %>%
     mutate(due=as_date(due)) %>%
-    select(Severity=labels,Project=Project_Name,Title=name,due,Issue,Impact,Action,Assignee=assignee,id,Project_id=idBoard)
+    left_join((RAG_replace %>% select(labels=colour,letter)),by="labels") %>%
+    mutate(letter=ifelse((labels %in% c("complete","closed")),"g",letter),
+           State=ifelse((labels %in% c("complete","closed")),"Closed","Open"))%>%
+    select(Severity=letter,Project=Project_Name,Title=name,due,Issue,Impact,Action,State,Assignee=assignee,id,Project_id=idBoard,url=shortUrl)
   
   
   #meetings
@@ -300,7 +305,7 @@ trello_normalise <-function(trello,programme_board,tasks_states_file){
   meetings <- collated_cards %>% 
     filter(List_Name=="Meeting Notes" & isTemplate==FALSE) %>%
     mutate(dateLastActivity=as_date(dateLastActivity)) %>%
-    select(Title=name,type=labels,Project_Name,attendees=assignee,summary=desc,updated=dateLastActivity,Project_id=idBoard,id)
+    select(Title=name,type=labels,Project_Name,attendees=assignee,summary=desc,updated=dateLastActivity,Project_id=idBoard,id,url=shortUrl)
   
   #tasks
   
@@ -344,10 +349,15 @@ trello_normalise <-function(trello,programme_board,tasks_states_file){
            due = gsub(x = due, pattern = "Due:", replacement = "")) %>%
     mutate(due=as_date(due)) 
   
+
   actions <- trello$checklists %>% mutate(name_cklst=name) %>%
     select(-id,-name,-pos) %>% unnest(checkItems) %>% select(-due) %>%
     left_join(chk_list_temp,by="id") %>%
-    select(type=name_cklst,action,assignee,state,due, id,Project_id=idBoard,Task_id=idCard)
+    select(type=name_cklst,action,assignee,state,due, id,Project_id=idBoard,Task_id=idCard) %>%
+    filter(type=="Actions") %>% select(-type) %>%
+    left_join((meetings  %>% 
+                 select(id,url) %>% unique(.) %>%
+                 select(Task_id=id,url)),by="Task_id")
   
   rm(chk_list_temp)
   
@@ -369,7 +379,7 @@ my_token <- trello_token(trello_key)
 trello<-trello_retrieve_data(my_token)
 normalised_data <- trello_normalise(trello,programme_board,tasks_states)
 rm(my_token,trello)
-rm(programme_board,tasks_states,trello_key)
+rm(programme_board,tasks_states,trello_key,RAG_replace)
   
   
   

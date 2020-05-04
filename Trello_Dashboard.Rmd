@@ -3,7 +3,7 @@ library(tidyverse)
 library(knitr)
 library(kableExtra)
 library(lubridate)
-library(googleVis)
+library(vistime)
 ```
 
 
@@ -12,15 +12,17 @@ library(googleVis)
 #tasks_states <- "./tasks_states.csv"
 #trello_key <- "./trello_secret.txt"
 source("trello.R", echo = F, prompt.echo = "", spaced = F)
-rm(programme_board,tasks_states,trello_key)
+rm(programme_board,trello_key,task_states)
 rm(list=lsf.str())
+#normalised_data <-trello
 save.image("Normalised_Data.RData")
 ```
 
 
 ```{r}
 load(("Normalised_Data.RData"))
-normalised_data$projects
+normalised_data
+
 ```
 ```{r}
     normalised_data$projects %>% filter(State=="Backlog") %>%
@@ -38,6 +40,7 @@ normalised_data$projects
 status_colours <- tibble(colour=c("NA","green","amber","red","grey"),
                          hex=c("purple","green","orange","red","#171921"))
 project_kanban_background <- tibble(colour=c("Backlog","Planning","Active","Complete"),
+                                    task
                          hex=c("background-color:#EAE8FF;","background-color:#D8D5DB;","background-color:#ADACB5;",
                                "background-color:#2D3142;"))
 
@@ -57,6 +60,7 @@ project_kanban_background %>% filter(state=="Backlog") %>% pull(hex)
 
 
 ```{r}
+
 
 status_colours <- tibble(colour=c("NA","green","amber","red","grey"),
                          hex=c("purple","green","orange","red","#171921"))
@@ -115,8 +119,9 @@ library(vistime)
 
 project_kanban_background <- tibble(State=c("Backlog","Planning","Active","Complete"),
                                     hex=c("#EAE8FF","#D8D5DB","#ADACB5","#2D3142"))
-status_colours <- tibble(colour=c("NA","green","amber","red","grey"),
-                         hex=c("purple","green","orange","red","#171921"))
+status_colours <- tibble(colour=c("NA","green","amber","red","grey","black"),
+                         colour_short=c("NA","G","A","R","g","B"),
+                         hex=c("purple","green","orange","red","#dedede","black"))
 
 p<- normalised_data$projects %>% select(Name,State,due,labels) %>% 
     mutate(start=Sys.Date(),
@@ -132,4 +137,340 @@ p<- normalised_data$projects %>% select(Name,State,due,labels) %>%
 
 vistime(p, title="Timeline")
 ```
+
+
+```{r}
+load(("Normalised_Data.RData"))
+normalised_data
+```
+
+
+```{r}
+normalised_data$comments%>% group_by(card_id) %>% summarise(latest_date=max(date)) %>% ungroup()
+```
+
+```{r}
+latest_comment <- normalised_data$comments %>% 
+  left_join((normalised_data$comments%>% 
+               group_by(card_id) %>% 
+             summarise(latest_date=max(date)) %>%
+               ungroup()),by="card_id") %>%
+  mutate(latest=(date==latest_date)) %>% 
+  filter(latest) %>% select(card_id,date,comment) %>%
+  group_by(card_id,date) %>% 
+     mutate(comment = paste0(comment, collapse = ", ")) %>% unique(.)
+
+rm(latest_comment)
+```
+
+
+
+```{r}
+status_colours <- tibble(colour=c("NA","green","amber","red","grey","black"),
+                         colour_short=c("NA","G","A","R","g","B"),
+                         hex=c("purple","#1b8c50","orange","red","#dedede","black"))
+project_kanban_background <- tibble(State=c("Backlog","Planning","Active","Complete"),
+                                    Task=c("To Do","Blocked","In Progress","Complete"),
+                                    hex=c("#EAE8FF","#D8D5DB","#a8edc9","#dedede"))
+
+today<-Sys.Date()
+tasks <- normalised_data$tasks
+
+#Fill end and start dates if not available
+
+if(!(any(names(tasks) == 'end'))){
+  tasks$end <- tasks$due
+  tasks <- select(tasks,-due)
+}
+
+if(!(any(names(tasks) == 'start'))){
+  tasks$start <- tasks$end
+}
+
+# Add metrics
+
+tasks <- tasks %>% mutate(metric_today_minus_end=ifelse(is.na(end),10^6,as.duration(interval(today,end)) / ddays(1)),
+                 metric_start_minus_today=ifelse(is.na(start),-10^6,as.duration(interval(start,today)) / ddays(1)),
+                 metric_activity_minus_today=ifelse(is.na(dateLastActivity),-10^6,as.duration(interval(dateLastActivity,today)) / ddays(1)))
+  
+
+
+#Calculate RAG
+
+tasks <- tasks %>% mutate(RAG="x",RAG_comment="-") %>%
+  mutate(eval=is.na(tasks$end),
+         RAG=ifelse(eval,paste(RAG,"R"),RAG),
+         RAG_comment=ifelse(eval,paste(RAG_comment,"No end date"),RAG_comment)) %>% ### No end Date
+  mutate(eval=is.na(tasks$start),
+         RAG=ifelse(eval,paste(RAG,"R"),RAG),
+         RAG_comment=ifelse(eval,paste(RAG_comment,"No start date",sep=", "),RAG_comment)) %>% ### No start Date
+   mutate(eval=((State=="To Do") & metric_start_minus_today>0),
+         RAG=ifelse(eval,paste(RAG,"R"),RAG),
+         RAG_comment=ifelse(eval,paste(RAG_comment,"Should have started",sep=", "),RAG_comment)) %>% ### Should have started
+  mutate(eval=(!(State=="Complete") & metric_today_minus_end<0),
+         RAG=ifelse(eval,paste(RAG,"R"),RAG),
+         RAG_comment=ifelse(eval,paste(RAG_comment,"Should have ended",sep=", "),RAG_comment)) %>%  ### Should have ended
+   mutate(eval=((State=="To Do") & (assignee=="NA")),
+         RAG=ifelse(eval,paste(RAG,"A"),RAG),
+         RAG_comment=ifelse(eval,paste(RAG_comment,"No Assignee",sep=", "),RAG_comment)) %>%  ### No Assignee while To Do 
+ mutate(eval=((State=="In Progress") & (assignee=="NA")),
+         RAG=ifelse(eval,paste(RAG,"R"),RAG),
+         RAG_comment=ifelse(eval,paste(RAG_comment,"No Assignee",sep=", "),RAG_comment)) %>%  ### No Assignee while In Progress
+  select(-eval) %>%
+  mutate(RAG=ifelse(grepl("R",RAG),"R",
+              ifelse(grepl("A",RAG),"A","x"))) %>% #consolidate Rs and As
+  mutate(RAG=ifelse(RAG=="x",
+                    ifelse(State=="In Progress","G",
+                           ifelse(State=="Blocked","A", 
+                              "G" )),
+                    RAG)) %>%
+  mutate(RAG=ifelse(State %in% c("Complete"),"g",RAG))
+####
+### add colour options
+
+tasks <- tasks %>% left_join(status_colours %>% select(RAG=colour_short,RAG_colour=hex),by="RAG") %>%
+          left_join(project_kanban_background %>% select(State=Task,State_colour=hex),by="State")
+
+
+## add latest comment:
+
+latest_comment <- normalised_data$comments %>% 
+  left_join((normalised_data$comments%>% 
+               group_by(card_id) %>% 
+             summarise(latest_date=max(date)) %>%
+               ungroup()),by="card_id") %>%
+  mutate(latest=(date==latest_date)) %>% 
+  filter(latest) %>% select(card_id,date,comment) %>%
+  group_by(card_id,date) %>% 
+     mutate(comment = paste0(comment, collapse = ", ")) %>%
+  ungroup() %>%
+  unique(.) %>% mutate(comment = paste(date, comment, sep = ": ")) %>%
+  select(id=card_id,comment)
+
+
+tasks <- tasks %>% left_join(latest_comment, by="id") 
+
+rm(latest_comment)
+```
+
+
+
+```{r}
+t.default_colour <- "black"
+tasks <- tasks %>%
+   mutate(t.RAG=cell_spec(RAG,color=RAG_colour,background = RAG_colour,tooltip=RAG_comment),
+          t.Task=cell_spec(Task,link=url,
+                           color=ifelse(State=="Complete",State_colour,t.default_colour),
+                           tooltip=comment),
+          t.assignee = assignee,
+          t.State = cell_spec(State,color="white",background=State_colour),
+          t.start = cell_spec(start,color=ifelse(metric_start_minus_today>0,
+                                                  (status_colours %>%
+                                                  filter(colour_short=="R") %>% 
+                                                  pull(hex)),
+                                                  ifelse(metric_start_minus_today>-1,
+                                                  (status_colours %>%
+                                                  filter(colour_short=="A") %>% 
+                                                  pull(hex)),
+                                                  t.default_colour))),
+         t.end= cell_spec(end,color= ifelse(metric_today_minus_end<0,
+                                                  (status_colours %>%
+                                                  filter(colour_short=="R") %>% 
+                                                  pull(hex)),
+                                                  ifelse(metric_today_minus_end<1,
+                                                  (status_colours %>%
+                                                  filter(colour_short=="A") %>% 
+                                                  pull(hex)),
+                                                  t.default_colour))
+                              ),
+          
+          )
+
+
+tasks %>% select(RAG=t.RAG,State=t.State,Task=t.Task,Assignee=t.assignee,start=t.start,end=t.end) %>%
+ kable(format = "html", escape = F,col.names = NULL) %>%
+    kable_styling("striped", full_width = F)
+#last comment - as tooltip of task!
+#colour end date
+
+
+
+#cell_spec(x, format, bold = FALSE, italic = FALSE, monospace = FALSE,
+#  underline = FALSE, strikeout = FALSE, color = NULL,
+#  background = NULL, align = NULL, font_size = NULL, angle = NULL,
+#  tooltip = NULL, popover = NULL, link = NULL, extra_css = NULL,
+#  escape = TRUE, background_as_tile = TRUE,
+ # latex_background_in_cell = TRUE)
+```
+
+
+```{r}
+
+source("eval.R", echo = F, prompt.echo = "", spaced = F)
+
+presentation_data <-vector(mode = "list", length = 0)
+
+presentation_data$tasks <- eval_tasks(normalised_data,status_colours,
+                       project_kanban_background, 
+                       today, t.default_colour)
+
+presentation_data$actions<- eval_actions(normalised_data,status_colours,
+                       project_kanban_background, 
+                       today, t.default_colour)
+
+#presentation_data$tasks %>% select(RAG=t.RAG,State=t.State,Task=t.Task,Assignee=t.assignee,start=t.start,end=t.end) %>%
+# kable(format = "html", escape = F,col.names = NULL) %>%
+#    kable_styling("striped", full_width = F)
+
+actions %>% select(RAG=t.RAG,State=t.State,Action=t.Action,Assignee=t.assignee,Due=t.due) %>%
+ kable(format = "html", escape = F) %>%
+    kable_styling("striped", full_width = F)
+```
+
+
+
+```{r}
+
+
+normalised_data$actions %>% filter(type=="Actions") %>% 
+  left_join((normalised_data$meetings  %>% 
+               select(id,url) %>% unique(.) %>%
+               select(Task_id=id,url)),by="Task_id") %>%
+     mutate(eval=((state=="incomplete") & metric_start_minus_today>0),
+         RAG=ifelse(eval,paste(RAG,"R"),RAG),
+         RAG_comment=ifelse(eval,paste(RAG_comment,"Should have started",sep=", "),RAG_comment)) %>% 
+    mutate(eval=(!(state=="Complete") & metric_today_minus_end<0),
+         RAG=ifelse(eval,paste(RAG,"R"),RAG),
+         RAG_comment=ifelse(eval,paste(RAG_comment,"Should have ended",sep=", "),RAG_comment)) %>%  ### Should have ended
+```
+
+```{r}
+normalised_data$tasks %>% filter(id=="5ea820339609d02461c136fa")
+```
+
+
+
+```{r}
+
+project_kanban_background <- tibble(State=c("Backlog","Planning","Active","Complete"),
+                                    Task=c("To Do","Blocked","In Progress","Complete"),
+                                    Action=c("dummy1","dummy2","incomplete","complete"),
+                                    hex=c("#EAE8FF","#D8D5DB","#a8edc9","#dedede"))
+actions <- normalised_data$actions %>% 
+  mutate(metric_today_minus_end=ifelse(is.na(strftime(due)),10^6,as.duration(interval(today,due)) / ddays(1))) %>% 
+  mutate(RAG="x",RAG_comment="-") %>%
+    mutate(eval=is.na(strftime(due)) ,
+           RAG=ifelse(eval,paste(RAG,"R"),RAG),
+           RAG_comment=ifelse(eval,paste(RAG_comment,"No due date"),RAG_comment)) %>% ### No Due Date
+  mutate(eval=((state=="incomplete") & metric_today_minus_end<0),
+         RAG=ifelse(eval,
+                    ifelse((metric_today_minus_end<-7),paste(RAG,"R"),paste(RAG,"A")),RAG),
+         RAG_comment=ifelse(eval,
+                            ifelse((metric_today_minus_end<-7),
+                                   paste(RAG_comment,"Should have ended more than a week back",sep=", "),
+                                   paste(RAG_comment,"Should have ended",sep=", ")),
+                                   RAG_comment)) %>%  ### Should have been done
+  mutate(eval=((state=="incomplete") & is.na(assignee)),
+         RAG=ifelse(eval,paste(RAG,"R"),RAG),
+         RAG_comment=ifelse(eval,paste(RAG_comment,"No Assignee",sep=", "),RAG_comment)) %>%### No Assignee 
+  mutate(RAG=ifelse(grepl("R",RAG),"R",
+              ifelse(grepl("A",RAG),"A","G"))) %>%
+  mutate(RAG=ifelse(state %in% c("complete"),"g",RAG)) %>%
+  select(-eval)
+
+### add colour options
+
+actions <- actions %>% left_join(status_colours %>% select(RAG=colour_short,RAG_colour=hex),by="RAG") %>%
+          left_join((project_kanban_background %>% select(state=Action,State_colour=hex)),by="state")
+
+actions <- actions %>%
+   mutate(t.RAG=cell_spec(RAG,color=RAG_colour,background = RAG_colour,tooltip=RAG_comment),
+          t.assignee = assignee,
+          t.State = cell_spec(state,color="white",background=State_colour),
+          t.due = cell_spec(due,color= ifelse(metric_today_minus_end<-7,
+                                                  (status_colours %>%
+                                                  filter(colour_short=="R") %>% 
+                                                  pull(hex)),
+                                                  ifelse(metric_today_minus_end<0,
+                                                  (status_colours %>%
+                                                  filter(colour_short=="A") %>% 
+                                                  pull(hex)),
+                                                  t.default_colour))
+                              ),
+              t.Action=cell_spec(action,link=url,
+                           color=ifelse(state=="complete",State_colour,t.default_colour),
+                           tooltip="Click to see source")
+          )
+
+
+actions %>% select(RAG=t.RAG,State=t.State,Action=t.Action,Assignee=t.assignee,Due=t.due) %>%
+ kable(format = "html", escape = F) %>%
+    kable_styling("striped", full_width = F)
+```
+
+
+
+```{r}
+
+project_kanban_background <- tibble(State=c("Backlog","Planning","Active","Complete"),
+                                    Task=c("To Do","Blocked","In Progress","Complete"),
+                                    Action=c("dummy1","dummy2","incomplete","complete"),
+                                    Issue=c("dummy1","dummy2","Open","Closed"),
+                                    hex=c("#EAE8FF","#D8D5DB","#a8edc9","#dedede"))
+issues <- normalised_data$issues %>%
+          mutate(metric_today_minus_end=ifelse(is.na(strftime(due)),10^6,as.duration(interval(today,due)) / ddays(1))) %>%
+          mutate(RAG=Severity,RAG_comment="-") %>%
+          mutate(eval=is.na(strftime(due)) ,
+           RAG=ifelse(eval,paste(RAG,"R"),RAG),
+           RAG_comment=ifelse(eval,paste(RAG_comment,"No due date"),RAG_comment)) %>% ### No Due Date
+           mutate(eval=((State=="Open") & metric_today_minus_end<0),
+           RAG=ifelse(eval,
+                    ifelse((metric_today_minus_end<-7),paste(RAG,"R"),paste(RAG,"A")),RAG),
+           RAG_comment=ifelse(eval,
+                            ifelse((metric_today_minus_end<-7),
+                                   paste(RAG_comment,"Should have ended more than a week back",sep=", "),
+                                   paste(RAG_comment,"Should have ended",sep=", ")),
+                                   RAG_comment)) %>%  ### Should have been done
+           mutate(eval=((State=="Open") & is.na(Assignee)),
+                 RAG=ifelse(eval,paste(RAG,"R"),RAG),
+                RAG_comment=ifelse(eval,paste(RAG_comment,"No Assignee",sep=", "),RAG_comment)) %>%### No Assignee 
+         mutate(RAG=ifelse(grepl("R",RAG),"R",
+              ifelse(grepl("A",RAG),"A","G"))) %>%
+        mutate(RAG=ifelse(State %in% c("Closed"),"g",RAG)) %>%
+        select(-eval)
+
+
+issues <- issues %>% left_join(status_colours %>% select(RAG=colour_short,RAG_colour=hex),by="RAG") %>%
+          left_join((project_kanban_background %>% select(State=Issue,State_colour=hex)),by="State")
+
+issues <- issues %>%
+   mutate(t.RAG=cell_spec(RAG,color=RAG_colour,background = RAG_colour,tooltip=RAG_comment),
+          t.Assignee = Assignee,
+          t.State = cell_spec(State,color="white",background=State_colour),
+          t.due = cell_spec(due,color= ifelse(metric_today_minus_end<-7,
+                                                  (status_colours %>%
+                                                  filter(colour_short=="R") %>% 
+                                                  pull(hex)),
+                                                  ifelse(metric_today_minus_end<0,
+                                                  (status_colours %>%
+                                                  filter(colour_short=="A") %>% 
+                                                  pull(hex)),
+                                                  t.default_colour))
+                              ),
+            t.Issue=cell_spec(Issue,link=url,
+                           color=ifelse(State=="Done",State_colour,t.default_colour),
+                           tooltip="Click to see source"),
+             t.Impact=cell_spec(Impact,
+                           color=ifelse(State=="Done",State_colour,t.default_colour)),
+            t.Action=cell_spec(Action,
+                           color=ifelse(State=="Done",State_colour,t.default_colour))
+          
+          )
+
+
+issues %>% select(RAG=t.RAG,State=t.State,Issue=t.Issue,Impact=t.Impact,Action=t.Action,Assignee=t.Assignee,Due=t.due) %>%
+ kable(format = "html", escape = F) %>%
+    kable_styling("striped", full_width = F)
+```
+
 

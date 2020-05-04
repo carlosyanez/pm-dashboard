@@ -10,10 +10,17 @@ library(lubridate)
 #########################
 #Colours
 #########################
-status_colours <- tibble(colour=c("NA","green","amber","red","grey"),
-                         hex=c("purple","green","orange","red","#171921"))
+status_colours <- tibble(colour=c("NA","green","amber","red","grey","black"),
+                         colour_short=c("NA","G","A","R","g","B"),
+                         hex=c("purple","green","orange","red","#dedede","black"))
+
 project_kanban_background <- tibble(State=c("Backlog","Planning","Active","Complete"),
-                                    hex=c("#EAE8FF","#D8D5DB","#ADACB5","#2D3142"))
+                                    Task=c("To Do","Blocked","In Progress","Complete"),
+                                    Action=c("dummy1","dummy2","incomplete","complete"),
+                                    Issue=c("dummy1","dummy2","Open","Closed"),
+                                    hex=c("#EAE8FF","#D8D5DB","#a8edc9","#dedede"))
+
+t.default_colour <- "black"
 
 
 #########################
