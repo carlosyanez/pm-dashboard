@@ -7,13 +7,8 @@ library(trelloR)
 library(tidyverse)
 library(lubridate)
 
-#####
-programme_board <-c("Sample_Programme")
-tasks_states <- "tasks_states.csv"
-trello_key <- "trello_secret.txt"
-RAG_replace <- tibble(colour=c("red","amber","green"),
-                      letter=c("R","A","G"))
-####
+#source("variables.R", echo = F, prompt.echo = "", spaced = F)
+
 
 ###get token
 trello_token <- function(text_file){
@@ -179,7 +174,7 @@ trello_retrieve_data <- function(my_token){
   output
 }
 
-trello_normalise <-function(trello,programme_board,tasks_states_file){
+trello_normalise <-function(trello,programme_board,tasks_states){
   
   output <-vector(mode = "list", length = 0)
   
@@ -261,7 +256,7 @@ trello_normalise <-function(trello,programme_board,tasks_states_file){
   #projects
   
   projects <- collated_cards %>% filter(Project_Name %in% programme_board) %>%
-    select(Name=name,State=List_Name,labels,assignee,desc,due) %>%
+    select(Name=name,State=List_Name,labels,assignee,desc,due,card_url=shortUrl) %>%
     left_join((trello$boards %>%
                  left_join( (rbind((collated_cards %>%
                                       filter(List_Name=="Project Details" & isTemplate==FALSE & !(name %in% c("Project Lead","Project Manager")))  %>%
@@ -272,16 +267,17 @@ trello_normalise <-function(trello,programme_board,tasks_states_file){
                                pivot_wider(id_cols=idBoard,names_from=name, values_from=desc) %>%
                                mutate(id=idBoard)),
                             by="id") %>%
-                 select(id=idBoard,Name=name,url,Scope,Objectives,"Project Lead","Project Manager",Parameters,card_id=id) %>%
+                 select(id=idBoard,Name=name,board_url=url,Scope,Objectives,Project_Lead="Project Lead",Project_Manager="Project Manager",Parameters,Project_id=id) %>%
                  filter(!(Name %in% programme_board))),by="Name") %>%
-    mutate("Project Lead"=if_else(is.na(.$"Project Lead"),assignee,.$"Project Lead"),
+    mutate(Project_Lead=if_else(is.na(Project_Lead),assignee,Project_Lead),
            Scope=if_else(is.na(Scope),desc,Scope)) %>%
     mutate(due=as_date(due)) %>%
-    select(-assignee,-desc) %>%
+    mutate(url=ifelse(is.na(Project_id),card_url,board_url)) %>%
+    select(-assignee,-desc,-board_url,-card_url) %>%
     left_join((collated_cards %>% 
                  filter(List_Name %in% c("Project Details") & name %in% c("Project Updates")) %>%
                  select(id=idBoard,updates_id=id)),
-              by="id")
+              by="id") %>% select(-id)
   
   #issues
   
@@ -309,7 +305,7 @@ trello_normalise <-function(trello,programme_board,tasks_states_file){
   
   #tasks
   
-  tasks_states <- read_csv(tasks_states_file)
+  #tasks_states <- read_csv(tasks_states_file)
   
   tasks <- collated_cards %>% filter(!(id %in% meetings$id) & 
                                        !(id %in% issues$id) & 
@@ -328,7 +324,7 @@ trello_normalise <-function(trello,programme_board,tasks_states_file){
     select(Task=name,due,State,Group=labels,Project_Name,assignee,id,Project_id=idBoard,url=shortUrl,dateLastActivity)
   
   
-  rm(tasks_states)
+#  rm(tasks_states)
   
   #comments
   
@@ -354,7 +350,10 @@ trello_normalise <-function(trello,programme_board,tasks_states_file){
     select(-id,-name,-pos) %>% unnest(checkItems) %>% select(-due) %>%
     left_join(chk_list_temp,by="id") %>%
     select(type=name_cklst,action,assignee,state,due, id,Project_id=idBoard,Task_id=idCard) %>%
-    filter(type=="Actions") %>% select(-type) %>%
+    left_join((projects %>% select(Project_id,Project=Name)),by="Project_id") %>%
+    filter(type=="Actions") %>% 
+    left_join((action_replace %>% select(state=Original,State=Replace)),by="state") %>%
+    select(-type,-state) %>%
     left_join((meetings  %>% 
                  select(id,url) %>% unique(.) %>%
                  select(Task_id=id,url)),by="Task_id")
@@ -369,6 +368,9 @@ trello_normalise <-function(trello,programme_board,tasks_states_file){
   output$issues <- issues
   output$meetings <- meetings
   output$actions <- actions
+  output$collated_cards <- collated_cards
+  output$boards <- trello$boards
+  
 
   output
 }
@@ -379,7 +381,7 @@ my_token <- trello_token(trello_key)
 trello<-trello_retrieve_data(my_token)
 normalised_data <- trello_normalise(trello,programme_board,tasks_states)
 rm(my_token,trello)
-rm(programme_board,tasks_states,trello_key,RAG_replace)
+rm(trello_key)
   
   
   

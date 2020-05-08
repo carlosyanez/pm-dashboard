@@ -1,0 +1,56 @@
+```{r}
+t.consolidated_tasks <- bind_rows(presentation_data$tasks %>% mutate(Type="Task") %>%
+                                     select(Type,Project=Project_Name,Item=Task,State,
+                                            assignee,due=end,RAG,
+                                            t.Project=Project_Name,
+                                            t.RAG,t.Item=t.Task,t.assignee,t.State,
+                                            t.due=t.end),
+                                   presentation_data$actions %>% mutate(Type="Action") %>%
+                                     select(Type,Project,Item=action,State,assignee,
+                                            due,RAG,t.RAG,t.Item=t.Action,t.assignee,
+                                            t.State,t.due),
+                                   presentation_data$issues %>% mutate(Type="Issue") %>%
+                                     select(Type,Project,Item=Title,State,assignee=Assignee,
+                                            due,RAG,t.RAG,t.Item=t.Title,
+                                            t.assignee=t.Assignee,
+                                            t.State,t.due))
+```
+
+```{r}
+t.consolidated_tasks <-  t.consolidated_tasks %>% mutate(f.condition1=(due <= today),
+                                                        
+                                                        f.condition2=(due < (today + horizon_span1)),
+                                                        f.condition3=(due < (today + horizon_span2)),
+                                                        f.condition4=is.na(strftime(due)),
+                                                        f.condition5=!(State %in% c("Complete","Closed")),
+                                                        f.selection=((f.condition1 | f.condition3 |f.condition4)
+                                                                     & f.condition5)) %>%
+     filter(f.selection) %>%
+     mutate(row_colour=ifelse(f.condition4,"X",
+                              ifelse(f.condition1,"U",
+                                     ifelse(f.condition2,"M",
+                                            ifelse(f.condition3,"L","N")))))         
+```
+
+
+
+```{r}
+consolidated_stats$person_frequency %>% 
+  left_join(font_sizes,by="nbr") %>%
+  mutate(Assignee=cell_spec(assignee,font_size = size, 
+                            bold = (nbr %in% c(1,2,3))
+                            ,
+                            color = ifelse((nbr %in% c(1,2,3)),
+                                           "navy",
+                                           t.default_colour))) %>%
+    mutate(Workload=cell_spec(freq,font_size = size, 
+                            bold = (nbr %in% c(1,2,3))
+                            ,
+                            color = ifelse((nbr %in% c(1,2,3)),
+                                           "navy",
+                                           t.default_colour))) %>%
+  select(Assignee,Workload)%>%
+  kable(format = "html", escape = F) %>%
+       kable_styling(full_width = F) 
+```
+
