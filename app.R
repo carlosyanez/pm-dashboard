@@ -1,5 +1,14 @@
-#########################
-library(shiny)
+if(!require(semantic.dashboard)) install.packages("semantic.dashboard", repos = "http://cran.us.r-project.org")
+if(!require(tidyverse)) install.packages("tidyverse", repos = "http://cran.us.r-project.org")
+if(!require(knitr)) install.packages("knitr", repos = "http://cran.us.r-project.org")
+if(!require(kableExtra)) install.packages("kableExtra", repos = "http://cran.us.r-project.org")
+if(!require(vistime)) install.packages("vistime", repos = "http://cran.us.r-project.org")
+if(!require(lubridate)) install.packages("lubridate", repos = "http://cran.us.r-project.org")
+if(!require(plotly)) install.packages("plotly", repos = "http://cran.us.r-project.org")
+if(!require(trelloR)) install.packages("trelloR", repos = "http://cran.us.r-project.org")
+
+
+#library(shiny)
 library(semantic.dashboard) 
 library(tidyverse)
 library(knitr)
@@ -8,538 +17,498 @@ library(vistime)
 library(lubridate)
 library(plotly)
 library(trelloR)
-#library(wordcloud)
-#library(RColorBrewer)
-#########################
 
 #########################
-#Load Variables
-#########################
 
-source("files/variables.R", echo = F, prompt.echo = "", spaced = F)
-normalised_data <-vector(mode = "list", length = 0)
-
-#### Get Data 
-
-if(file.exists(Rdata_file)){
-  normalised_data<-readRDS(file=Rdata_file)
-  
-}else{
-  source("r/trello.R", echo = F, prompt.echo = "", spaced = F)
-  normalised_data$data_retrieved <- now()
-  saveRDS(normalised_data, file =Rdata_file)  
-}
+source("./r/variables.R")
+#normalised_data <-reactiveValues()
+#presentation_data <-reactiveValues()
+rendered_data <-reactiveValues()
+source("./r/render.R", echo = F, prompt.echo = "", spaced = F)
 
 
+###UI Tabs
 
-if(!("data_retrieved" %in% names(normalised_data))){
-  normalised_data$data_retrieved <- now() - ddays(100000)
-  
-}
-
-normalised_data$data_retrieved + auto_refresh
-
-if((normalised_data$data_retrieved + auto_refresh) > now()){
- source("./r/eval.R", echo = F, prompt.echo = "", spaced = F)
-  
-}else
-{
-  source("r/trello.R", echo = F, prompt.echo = "", spaced = F)
-  normalised_data$data_retrieved <- now()
-  saveRDS(normalised_data, file=Rdata_file)
-  
-#  source("r/eval.R", echo = F, prompt.echo = "", spaced = F)
-  
-}
-rm(list=lsf.str())
-
-#########################
-#UI functions: tabs
-#########################
-
-
-tab_home <- fluidRow(h1("Project's Dashboard"),
-                     h2(paste(source_system," version")),
-                     hr(),
-                     br(),)
+tab_home_1.0 <- fluidRow(h1("Project's Dashboard"))
+tab_home_1.1 <- fluidRow(h2("version 1"))
+tab_home_1.2 <- fluidRow(textOutput("update_msg"))
+tab_home_1.3 <- fluidRow(actionButton("refresh_data", "Refresh Data"))
 
 tab_summary_1.0 <-fluidRow(
-  h1("Programme's Synoptic View")
+    h1("Programme's Synoptic View")
 )
 tab_summary_1.1 <-fluidRow(
-  valueBox("Backlog", programme_stats[1,]$Backlog, icon("hourglass outline"), color = "blue", width = 2,size="tiny"),
-  valueBox("Planning", programme_stats[1,]$Planning, icon("hourglass start"), color = "blue", width = 2,size="tiny"),
-  valueBox("In Progress", programme_stats[1,]$"In Progress", icon("hourglass half"), color = "blue", width = 2,size="tiny"),
-  valueBox("Complete", programme_stats[1,]$Complete, icon("hourglass start"), color = "blue", width = 2,size="tiny"),
-  valueBox("R", programme_stats[1,]$R, icon("exclamation triangle"), color = "red", width = 2,size="tiny"),
-  valueBox("A", programme_stats[1,]$A, icon("exclamation circle"), color = "orange", width = 2,size="tiny"),
-  valueBox("G", programme_stats[1,]$G, icon("exclamation"), color = "green", width = 2,size="tiny")
-
+    valueBox("Backlog", textOutput("summary1.Backlog"), icon("hourglass outline"), color = "blue", width = 2,size="tiny"),
+    valueBox("Planning", textOutput("summary1.Planning"), icon("hourglass start"), color = "blue", width = 2,size="tiny"),
+    valueBox("In Progress", textOutput("summary1.InProgress"), icon("hourglass half"), color = "blue", width = 2,size="tiny"),
+    valueBox("Complete", textOutput("summary1.Complete"), icon("hourglass start"), color = "blue", width = 2,size="tiny"),
+    valueBox("R", textOutput("summary1.R"), icon("exclamation triangle"), color = "red", width = 2,size="tiny"),
+    valueBox("A", textOutput("summary1.A"), icon("exclamation circle"), color = "orange", width = 2,size="tiny"),
+    valueBox("G", textOutput("summary1.G"), icon("exclamation"), color = "green", width = 2,size="tiny")  
 )
 
 tab_summary_1.2 <-fluidRow(
-  h3("Programme Kanban")
-  )
+    h3("Programme Kanban")
+)
 
 tab_summary_1.3 <- fluidRow(
-  
-  semantic.dashboard::column(4,style=paste("background-color:",c.background1,";",sep=""),                      
-  semantic.dashboard::box(title="Backlog",color = kanban_backlog,
-                          ribbon = TRUE,
-                          title_side = "top left",
-                          collapsible = FALSE,
-                          tableOutput("project_list_backlog"))),
-  semantic.dashboard::column(4,style=paste("background-color:",c.background1,";",sep=""),                      
-  semantic.dashboard::box(title="Planning",color = kanban_planning,
-                          ribbon = TRUE,
-                          title_side = "top left",
-                          collapsible = FALSE,
-                          width=4,tableOutput("project_list_planning"))),
-  semantic.dashboard::column(4,style=paste("background-color:",c.background1,";",sep=""),                      
-  semantic.dashboard::box(title="In Progress",color = kanban_progress,
-                          ribbon = TRUE,
-                          title_side = "top left",
-                          collapsible = FALSE,
-                          width=4,tableOutput("project_list_active"))),
-  semantic.dashboard::column(4,style=paste("background-color:",c.background1,";",sep=""),                      
-  semantic.dashboard::box(title="Complete",color = kanban_complete,
-                          ribbon = TRUE,
-                          title_side = "top left",
-                          collapsible = FALSE,
-                          width=4,tableOutput("project_list_complete")))
+    
+    semantic.dashboard::column(4,style=paste("background-color:",app_vars$c.background1,";",sep=""),                      
+                               semantic.dashboard::box(title="Backlog",color = app_vars$kanban_backlog,
+                                                       ribbon = TRUE,
+                                                       title_side = "top left",
+                                                       collapsible = FALSE,
+                                                       tableOutput("project_list_backlog"))),
+    semantic.dashboard::column(4,style=paste("background-color:",app_vars$c.background1,";",sep=""),                      
+                               semantic.dashboard::box(title="Planning",color = app_vars$kanban_planning,
+                                                       ribbon = TRUE,
+                                                       title_side = "top left",
+                                                       collapsible = FALSE,
+                                                       width=4,tableOutput("project_list_planning"))),
+    semantic.dashboard::column(4,style=paste("background-color:",app_vars$c.background1,";",sep=""),                      
+                               semantic.dashboard::box(title="In Progress",color = app_vars$kanban_progress,
+                                                       ribbon = TRUE,
+                                                       title_side = "top left",
+                                                       collapsible = FALSE,
+                                                       width=4,tableOutput("project_list_active"))),
+    semantic.dashboard::column(4,style=paste("background-color:",app_vars$c.background1,";",sep=""),                      
+                               semantic.dashboard::box(title="Complete",color = app_vars$kanban_complete,
+                                                       ribbon = TRUE,
+                                                       title_side = "top left",
+                                                       collapsible = FALSE,
+                                                       width=4,tableOutput("project_list_complete")))
 )
 
 tab_summary_1.4 <-fluidRow(
-  h3("Roadmap")
+    h3("Roadmap")
 )
 
-tab_summary_1.5 <-  dateInput("roadmap_start_date", label = h3("Date input"), value = "2014-01-01")
+tab_summary_1.5 <-  fluidRow(
+    dateRangeInput("daterange_roadmap", "Date range:",
+                   start = ymd(today()),
+                   end   = ymd(today()+dweeks(24)))
+    
+)
 
 tab_summary_1.6 <-  fluidRow(
-   semantic.dashboard::box(title="Roadmap",
-                           width=16,collapsible = FALSE,
-                           color=c.background2,
-                           plotlyOutput("projects_roadmap"))
+    semantic.dashboard::box(title="Roadmap",
+                            width=16,collapsible = FALSE,
+                            color=app_vars$c.background2,
+                            plotlyOutput("projects_roadmap"))
 )
 
 tab_summary_2.0 <- fluidRow(
-  h1("High Level Report")
+    h1("High Level Report")
 )
 
-tab_summary_2.1 <- tab_summary_1.1
+tab_summary_2.1  <-fluidRow(
+valueBox("Backlog", textOutput("summary2.Backlog"), icon("hourglass outline"), color = "blue", width = 2,size="tiny"),
+valueBox("Planning", textOutput("summary2.Planning"), icon("hourglass start"), color = "blue", width = 2,size="tiny"),
+valueBox("In Progress", textOutput("summary2.InProgress"), icon("hourglass half"), color = "blue", width = 2,size="tiny"),
+valueBox("Complete", textOutput("summary2.Complete"), icon("hourglass start"), color = "blue", width = 2,size="tiny"),
+valueBox("R", textOutput("summary2.R"), icon("exclamation triangle"), color = "red", width = 2,size="tiny"),
+valueBox("A", textOutput("summary2.A"), icon("exclamation circle"), color = "orange", width = 2,size="tiny"),
+valueBox("G", textOutput("summary2.G"), icon("exclamation"), color = "green", width = 2,size="tiny")  
+)
 
 tab_summary_2.2 <- fluidRow(
-  valueBox("Late Start", programme_stats[1,]$late.start, icon("exclamation"), color = "violet", width = 2,size="tiny"),
-  valueBox("Overdue", programme_stats[1,]$overdue, icon("exclamation"), color = "violet", width = 2,size="tiny"),
-  valueBox("Late Tasks", programme_stats[1,]$late.tasks, icon("hourglass outline"), color = "violet", width = 2,size="tiny"),
-  valueBox("R Issues", programme_stats$issue.R, icon("exclamation"), color = "red", width = 2,size="tiny"),
-  valueBox("A Issues", programme_stats$issue.A, icon("exclamation"), color = "orange", width = 2,size="tiny"),
-  valueBox("Op Actions", programme_stats[1,]$open.actions, icon("hourglass outline"), color = "violet", width = 2,size="tiny")
-  
+    valueBox("Late Start", textOutput("summary2.late.start"), icon("exclamation"), color = "violet", width = 2,size="tiny"),
+    valueBox("Overdue", textOutput("summary2.overdue"), icon("exclamation"), color = "violet", width = 2,size="tiny"),
+    valueBox("Late Tasks",textOutput("summary2.late.tasks"), icon("hourglass outline"), color = "violet", width = 2,size="tiny"),
+    valueBox("R Issues", textOutput("summary2.issue.R"), icon("exclamation"), color = "red", width = 2,size="tiny"),
+    valueBox("A Issues", textOutput("summary2.issue.A"), icon("exclamation"), color = "orange", width = 2,size="tiny"),
+    valueBox("Op Actions", textOutput("summary2.actions"), icon("hourglass outline"), color = "violet", width = 2,size="tiny")
 )
 
 tab_summary_2.3 <- fluidRow(
-  h3("Projects")
+    h3("Projects")
 )
 tab_summary_2.4 <- fluidRow(
-  semantic.dashboard::box(title="Projects",width=16,color="blue",
-  tableOutput("projects_summary"))
+    semantic.dashboard::box(title="Projects",width=16,color="blue",
+                            tableOutput("projects"))
 )
-
 tab_summary_2.5 <- fluidRow(
-  h3("Issues")
+    h3("Issues")
 )
 
 tab_summary_2.6 <- fluidRow(
-  semantic.dashboard::box(title="Issues",width=16,color="red",
-                          tableOutput("issues_summary"))
+    semantic.dashboard::box(title="Issues",width=16,color="red",
+                            tableOutput("issues_summary"))
 )
 
 tab_summary_2.7 <- fluidRow(
-  h3("Actions")
+    h3("Actions")
 )
 
 tab_summary_2.8 <- fluidRow(
-  semantic.dashboard::box(title="Upcoming Tasks",width=12,color="violet",
-                          tableOutput("actions_summary"))
+    semantic.dashboard::box(title="Upcoming Tasks",width=12,color="violet",
+                            tableOutput("actions_summary"))
 )
 
 tab_daily_summary_1.0 <- fluidRow(
-  h3("Daily Tracker")
+    h3("Daily Tracker")
 )
 
 tab_daily_summary_1.1 <- column(10,
-  semantic.dashboard::box(title="Item Tracker",color="blue",
-                          tableOutput("consolidated_tasks"))
+                                semantic.dashboard::box(title="Item Tracker",color="blue",
+                                                        tableOutput("consolidated_tasks"))
 )
 
 tab_daily_summary_1.2 <- column(6,
-                                h4("RAG distribution"),
-                                valueBox("R", consolidated_stats$R, icon("exclamation"), color = "red", width = 2,size="tiny"),
+                                h4("RAG Distribution"),
+                                valueBox("R", textOutput("stats_dailyR"), icon("exclamation"), color = "red", width = 2,size="tiny"),
                                 br(),
-                                valueBox("A", consolidated_stats$A, icon("exclamation"), color = "orange", width = 2,size="tiny"),
+                                valueBox("A", textOutput("stats_dailyA"), icon("exclamation"), color = "orange", width = 2,size="tiny"),
                                 br(),
-                                valueBox("G", consolidated_stats$G, icon("exclamation"), color = "green", width = 2,size="tiny"),
+                                valueBox("G", textOutput("stats_dailyG"), icon("exclamation"), color = "green", width = 2,size="tiny"),
                                 br(),
-                                h4("Workload"),
-                                tableOutput("project_freq"),
-                                tableOutput("people_freq")
+                                semantic.dashboard::box(title="Project Distribution",color="blue",
+                                                        tableOutput("project_freq")),
+                                br(),
+                                semantic.dashboard::box(title="People's Workload",color="blue",
+                                                        tableOutput("people_freq"))
                                 
-                                )
+)
 
-#########################
-#UI functions
-#########################
+# Define UI for application that draws a histogram
+
 header <- dashboardHeader(title = "Projects Dashboard")
 
 sidebar <- dashboardSidebar(sidebarMenu(
-  menuItem(tabName = "home", text = "Home", icon = icon("home")),
-  menuItem(tabName = "summary_1", text = "Projects' Synoptic", icon = icon("compass")),
-  menuItem(tabName = "summary_2", text = "Projects' Report", icon = icon("clipboard outline")),
-  menuItem(tabName = "project_details", text = "Project Details", icon = icon("file alternate outline")),
-  menuItem(tabName = "daily_view", text = "Daily Tracker", icon = icon("calendar check outline")),  
-  menuItem(tabName = "flexdashboard", text = "Download Report", icon = icon("download")),
-  menuItem(tabName = "about", text = "About", icon = icon("copyright outline icon"))
-  
-  ))
+    menuItem(tabName = "home", text = "Home", icon = icon("home")),
+    menuItem(tabName = "summary_1", text = "Projects' Synoptic", icon = icon("compass")) ,
+    menuItem(tabName = "summary_2", text = "Projects' Report", icon = icon("clipboard outline")),
+ #   menuItem(tabName = "project_details", text = "Project Details", icon = icon("file alternate outline")),
+    menuItem(tabName = "daily_view", text = "Daily Tracker", icon = icon("calendar check outline")) ,  
+ #   menuItem(tabName = "flexdashboard", text = "Download Report", icon = icon("download")),
+    menuItem(tabName = "about", text = "About", icon = icon("copyright outline icon"))
+    
+))
 
 body <-   dashboardBody(
-  tabItems(
-    tabItem("home",
-            tab_home),
-    tabItem("summary_1",
-            tab_summary_1.0,
-            tab_summary_1.1,
-            tab_summary_1.2,
-            tab_summary_1.3,
-            tab_summary_1.4,
-            tab_summary_1.6),
-    tabItem("summary_2",
-            tab_summary_2.0,
-            tab_summary_2.1,
-            tab_summary_2.2,
-            tab_summary_2.3,
-            tab_summary_2.4,
-            tab_summary_2.5,
-            tab_summary_2.6,
-            tab_summary_2.7,
-            tab_summary_2.8),
-    tabItem("project_details",
-            tab_home),
-    tabItem("daily_view",
-            tab_daily_summary_1.0,
-            fluidRow(
-            tab_daily_summary_1.1,
-            tab_daily_summary_1.2)),
-   # tabItem("flexdashboard",
-   #         tab_home),
-  #  tabItem("about",
-  #          tab_home)
-  ) 
+    tabItems(
+        tabItem("home",
+                tab_home_1.0,
+                tab_home_1.1,
+                tab_home_1.2,
+                tab_home_1.3),
+        tabItem("summary_1",
+                tab_summary_1.0,
+                tab_summary_1.1,
+                tab_summary_1.2,
+                tab_summary_1.3,
+                tab_summary_1.4,
+                tab_summary_1.5,
+                 tab_summary_1.6),
+        tabItem("summary_2",
+                tab_summary_2.0,
+                tab_summary_2.1,
+                tab_summary_2.2,
+                tab_summary_2.3,
+                tab_summary_2.4,
+                tab_summary_2.5,
+                tab_summary_2.6,
+                tab_summary_2.7,
+                tab_summary_2.8),
+#        tabItem("project_details",
+#                tab_home_1.0),
+        tabItem("daily_view",
+                tab_daily_summary_1.0,
+                fluidRow(
+                    tab_daily_summary_1.1,
+                    tab_daily_summary_1.2)),
+#        tabItem("flexdashboard",
+#                tab_home_1.0),
+        tabItem("about",
+                tab_home_1.0)
+    ) 
 )
 
-ui <- dashboardPage(header,sidebar,body,theme = "flatly")
+ui <- dashboardPage(header,sidebar,body,theme = "cerulean")
 
-#########################
-#server elements
-#########################
-
-#########################
-## Projects kanban 
-#########################
-
-#### generate table function
-####Table
- project_kanban_tables <- function(input,output){
-        
-   projects_kanban <- normalised_data$projects  %>%
-     select(labels,State,Name) %>%
-     mutate(colour=ifelse(State=="Complete","grey",labels)) %>%
-     left_join(status_colours,by="colour") %>%
-     mutate(Pres_Name=cell_spec(Name, color="white",background = hex))   
-   
-   
-  output$project_list_backlog <- function() {
-    k_state <- "Backlog"
-    k_colour <- "white"
-    presentation_data$projects %>% 
-      mutate(k.Project=ifelse(State==k_state,k.Project,cell_spec("",background = k_colour, color=k_colour)),
-             k.Progress=ifelse(State==k_state,k.Progress,""),
-             k.Overdue_Tasks=ifelse(State==k_state,k.Overdue_Tasks,""),
-             k.Open_Issues=ifelse(State==k_state,k.Open_Issues,"") 
-      ) %>% select(k.Project,k.Progress,k.Overdue_Tasks,k.Open_Issues) %>%
-      arrange(k.Project) %>%
-      kable(format = "html", escape = F,col.names = NULL) %>%
-      kable_styling(full_width = F) %>%
-      column_spec(2:4, italic = TRUE)
-  }
-  
-  output$project_list_planning <- function() {
-    k_state <- "Planning"
-   # k_colour <- project_kanban_background %>% filter(State==k_state) %>% pull(hex2)
-    k_colour <- "white"
-    presentation_data$projects %>% 
-      mutate(k.Project=ifelse(State==k_state,k.Project,cell_spec("",background = k_colour, color=k_colour)),
-             k.Progress=ifelse(State==k_state,k.Progress,""),
-             k.Overdue_Tasks=ifelse(State==k_state,k.Overdue_Tasks,""),
-             k.Open_Issues=ifelse(State==k_state,k.Open_Issues,"") 
-      ) %>% select(k.Project,k.Progress,k.Overdue_Tasks,k.Open_Issues) %>%
-      arrange(k.Project) %>%
-      kable(format = "html", escape = F,col.names = NULL) %>%
-      kable_styling(full_width = F) %>%
-      column_spec(2:4,italic = TRUE)
-}
-  output$project_list_active <- function() {
-    k_state <- "In Progress"
-    k_colour <- "white"
-    presentation_data$projects %>% 
-      mutate(k.Project=ifelse(State==k_state,k.Project,cell_spec("",background = k_colour, color=k_colour)),
-             k.Progress=ifelse(State==k_state,k.Progress,""),
-             k.Overdue_Tasks=ifelse(State==k_state,k.Overdue_Tasks,""),
-             k.Open_Issues=ifelse(State==k_state,k.Open_Issues,"") 
-      ) %>% select(k.Project,k.Progress,k.Overdue_Tasks,k.Open_Issues) %>%
-      arrange(k.Project) %>%
-      kable(format = "html", escape = F,col.names = NULL) %>%
-      kable_styling(full_width = F) %>%
-      column_spec(2:4,italic = TRUE)
-  }
-  
-output$project_list_complete <- function() {
-  k_state <- "Complete"
-  k_colour <- "white"
-  presentation_data$projects %>% 
-    mutate(k.Project=ifelse(State==k_state,k.Project,cell_spec("",background = k_colour, color=k_colour)),
-           k.Progress=ifelse(State==k_state,k.Progress,""),
-           k.Overdue_Tasks=ifelse(State==k_state,k.Overdue_Tasks,""),
-           k.Open_Issues=ifelse(State==k_state,k.Open_Issues,"") 
-    ) %>% select(k.Project,k.Progress,k.Overdue_Tasks,k.Open_Issues) %>%
-    arrange(k.Project) %>%
-    kable(format = "html", escape = F,col.names = NULL) %>%
-    kable_styling(full_width = F) %>%
-    column_spec(2:4,italic = TRUE)
-}
- }
-
- projects_roadmap <- function(input,output){
-  
-  roadmap_start_date <- as_date(cut(today, "month"))
-  
-  roadmap_table<-presentation_data$projects %>%
-    mutate(no_start=is.na(strftime(start)),
-           no_end=is.na(strftime(end))) %>%
-    filter(!(no_start) & !(no_end)) %>%
-    mutate(start=as_date(ifelse(no_start,end,start)),
-           end = as_date(ifelse(no_end,start,end))) %>%
-    mutate(start=as_date(ifelse(start<  roadmap_start_date,  roadmap_start_date,start)),
-           end=as_date(ifelse(end<roadmap_start_date,(roadmap_start_date - ddays(1)),end))) %>%
-    filter(end>=roadmap_start_date) %>%
-    mutate(comments=paste("Start:", start,
-                          " - End:",end,
-                          " - State :", RAG,
-                          " ",RAG_comment,
-                          sep = "")) %>%
-    select(event=Name,start,end,group=State,color=State_colour,tooltip=comments)   
-  
-  tl<-vistime(roadmap_table, title = "Roadmap",optimize_y=FALSE)
-  
-  line <- list(
-    type = "line",
-    line = list(color = "orange"),
-    xref = "x",
-    yref = "y",
-    x0 = today, 
-    x1 = today,
-    y0 = 0,
-    y1 = nrow(projects_roadmap)+3
-    
-  )
-  
-  tl <- layout(tl, title = 'Project Roadmap', shapes = line) 
-  
-  
-  output$projects_roadmap <- renderPlotly({tl})
-}
-
- projects_summary <- function(input,output){
-   
-   project_list <- presentation_data$projects %>% 
-     mutate(condition1=(!(State %in% c("Complete")) & !is.na(strftime(end))),
-            condition2=(State %in% c("Planning","In Progress")),
-            condition3= (State %in% c("Complete") & (end+ddays(15)>today)),
-            select = condition1 | condition2 | condition3
-     ) %>%
-     filter(select) %>%
-     select(" "=t.RAG,State=t.State,Due=t.end,"Project Name"=t.Project,
-            "%"=t.Progress,OD=t.Overdue_Tasks,
-            Issues=t.Open_Issues,Update=t.Update) 
-   p_rows <- nrow(project_list)
-   
-   output$projects_summary <- function() {
-
-     project_list %>%
-       kable(format = "html", escape = F) %>%
-       kable_styling(full_width = T)  %>%
-       column_spec(2, width_min="7em") %>%
-       column_spec(3, width_min="5em") %>%
-       column_spec(4, width_min="8em") %>%
-       column_spec(8,width_min="10em") %>%
-       row_spec(seq(1,p_rows,2),background =c.background3,hline_after=TRUE) %>%
-       row_spec(seq(2,p_rows,2),background =c.background4,hline_after=TRUE)
-   }
- }
- 
- issues_summary <- function(input,output){
-   
-   issue_list <- presentation_data$issues %>% 
-     mutate(condition1=((State %in% c("Open")) ),
-            condition2= (State %in% c("Closed") & (due+ddays(15)>today)),
-            select = condition1 | condition2
-     ) %>%
-     filter(select) %>%
-     arrange(due) %>%
-     select(" "=t.RAG,State=t.State,"Project Name"=t.Project,
-            Issue=t.Issue,Assignee=t.Assignee,			
-            Impact=t.Impact,Action=t.Action,Due=t.due) 
-   p_rows <- nrow(issue_list)
-   
-   output$issues_summary <- function() {
-     issue_list %>%
-       kable(format = "html", escape = F) %>%
-       kable_styling(full_width = T)  %>%
-       row_spec(seq(1,p_rows,2),background =c.background3,hline_after=TRUE) %>%
-       row_spec(seq(2,p_rows,2),background =c.background4,hline_after=TRUE) %>%
-       column_spec(8,width_min="5em") 
-     
-   }
- }
- 
- actions_summary <- function(input,output){
-   
-   action_list <- presentation_data$actions %>% 
-     mutate(condition1=((State %in% c("Open")) ),
-            condition2= (State %in% c("Closed") & (due+ddays(15)>today)),
-            selection = condition1 | condition2) %>%
-     filter(selection) %>%
-     arrange(due) %>%
-     select(" "=t.RAG,State=t.State,"Project Name"=t.Project,
-            Action=t.Action, Assignee=t.assignee, Due=t.due) 
-   p_rows <- nrow(action_list)
-   
-   output$actions_summary <- function() {
-     
-     action_list %>%
-       kable(format = "html", escape = F) %>%
-       kable_styling(full_width = T)  %>%
-       row_spec(seq(1,p_rows,2),background =c.background3,hline_after=TRUE) %>%
-       row_spec(seq(2,p_rows,2),background =c.background4,hline_after=TRUE) %>%
-       column_spec(4,width_min="20em") %>%
-       column_spec(6,width_min="5em") 
-       
-     
-   }
- }
- 
- 
- consolidated_tasks <- function(input,output){
-  
-   
-   X_rows <- which(t.consolidated_tasks$row_colour=="X")
-   U_rows <- which(t.consolidated_tasks$row_colour=="U")
-   M_rows <- which(t.consolidated_tasks$row_colour=="M")
-   L_rows <- which(t.consolidated_tasks$row_colour=="L")
-
-   output$consolidated_tasks <- function() {
-     
-     t.consolidated_tasks %>%
-       select(" "=t.RAG,Type,State=t.State,Due=t.due,Item=t.Item,Assignee=t.assignee)  %>% 
-       kable(format = "html", escape = F) %>%
-       kable_styling(full_width = F) %>%
-       row_spec(X_rows,background=c.X_rows,hline_after=TRUE) %>%
-       row_spec(U_rows,background=c.U_rows,hline_after=TRUE) %>%
-       row_spec(M_rows,background=c.M_rows,hline_after=TRUE) %>%
-       row_spec(L_rows,background=c.L_rows,hline_after=TRUE) %>%
-       column_spec(3, width_min="7em") %>%
-       column_spec(4, width_min="5em") 
-     
-     
-   }
- }
- people_freq <- function(input,output){
-   
-   output$people_freq <- function() {
-   consolidated_stats$person_frequency %>% 
-     left_join(font_sizes,by="nbr") %>%
-     mutate(Assignee=cell_spec(assignee,font_size = size, 
-                               bold = (nbr %in% c(1,2,3))
-                               ,
-                               color = ifelse((nbr %in% c(1,2,3)),
-                                              "navy",
-                                              t.default_colour))) %>%
-     mutate(Workload=cell_spec(freq,font_size = size, 
-                               bold = (nbr %in% c(1,2,3))
-                               ,
-                               color = ifelse((nbr %in% c(1,2,3)),
-                                              "navy",
-                                              t.default_colour))) %>%
-     select(Assignee,Workload)%>%
-     kable(format = "html", escape = F) %>%
-     kable_styling(full_width = F) 
-   }
-   
- }
-
- project_freq <- function(input,output){
-   
-   output$project_freq <- function() {
-     consolidated_stats$project_frequency %>% 
-       left_join(font_sizes,by="nbr") %>%
-       mutate(Project=cell_spec(Project,font_size = size, 
-                                 bold = (nbr %in% c(1,2,3))
-                                 ,
-                                 color = ifelse((nbr %in% c(1,2,3)),
-                                                "navy",
-                                                t.default_colour))) %>%
-       mutate(Workload=cell_spec(freq,font_size = size, 
-                                 bold = (nbr %in% c(1,2,3))
-                                 ,
-                                 color = ifelse((nbr %in% c(1,2,3)),
-                                                "navy",
-                                                t.default_colour))) %>%
-       select(Assignee,Workload)%>%
-       kable(format = "html", escape = F) %>%
-       kable_styling(full_width = F) 
-   }
-   
- }
- 
-#########################
-#server function
-#########################
+# Define server logic required to draw a histogram
 server <- function(input, output) {
-  
+    message("Initial Load")
+    observeEvent(input$refresh_data,
+                 {
+                     message(paste("Starting Refresh"))
+                     
+                     source("./r/trello.R", echo = F, prompt.echo = "", spaced = F)
+                     normalised_data$data_retrieved <- as_date(now())
+                     saveRDS(normalised_data, file=app_vars$Ndata_file) 
+                     normalised_data <-readRDS(file=app_vars$Ndata_file)
+
+                    
+                     message("Data Sourced:")
+                     message(nrow(normalised_data$projects))
+                     
+                     source("./r/eval.R", echo = F, prompt.echo = "", spaced = F)
+                     
+                     message("Data Evaluated")
+                     message(nrow(presentation_data$projects))
 
 
-  project_kanban_tables(input,output) 
-  #tables: output$project_list_backlog,output$project_list_planning,output$project_list_active,
-  #        output$project_list_complete
-  
-  projects_roadmap(input,output)
-  #timeline : output$projects_roadmap
-  
-  projects_summary(input,output)
-  #tables: output$projects_summary
-  
-  issues_summary(input,output)
-  #tables: output$issues_summary
-  
-  actions_summary(input,output)
-  #tables: output$actions_summary
-  
-  consolidated_tasks(input,output)
-  #tables: output$consolidated_tasks
-  
-  people_freq(input,output)
-  project_freq(input,output)
-}
+                     presentation_data$data_retrieved <- now()
+                     rendered_data$data_retrieved <- now()
+                     
+                     saveRDS(normalised_data, file=app_vars$Ndata_file) 
+                     saveRDS(presentation_data, file=app_vars$Pdata_file) 
+                     
+                    rendered_data$render.kanban = project_kanban_tables(presentation_data,app_vars)
+                     rendered_data$render.roadmap <- projects_roadmap(presentation_data,app_vars,as_date(cut(app_vars$today, "month")))
+                     rendered_data$render.projects <- projects_summary(presentation_data,app_vars)
+                     rendered_data$render.issues <- issues_summary(presentation_data,app_vars)
+                     rendered_data$render.actions <- actions_summary(presentation_data,app_vars)
+                     rendered_data$render.tasks <- consolidated_tasks(presentation_data,app_vars)
+                     rendered_data$render.people_freq <- people_freq(presentation_data,app_vars)
+                     rendered_data$render.project_freq <- project_freq(presentation_data,app_vars)
+                     rendered_data$render.stats_summary1 <- stats_summary1(presentation_data)
+                     rendered_data$render.stats_summary2 <- stats_summary2(presentation_data)
+                     rendered_data$render.stats_daily <- stats_daily(presentation_data)
+                     rendered_data$render.update_msg <- last_update_date(rendered_data)
+
+                     saveRDS(rendered_data, file=app_vars$Rdata_file)  
+                     
+                     message(paste("Refresh completed",rendered_data$data_retrieved))
+                 })
+
+    ### Load Files
+    if(file.exists(app_vars$Rdata_file)){
+        rendered_data <-readRDS(file=app_vars$Rdata_file)
+        message(paste("Rendered data loaded",isolate(rendered_data$data_retrieved)))
+        if(!("data_retrieved" %in% "data_retrieved")){
+            isolate(rendered_data$data_retrieved) <- now() - ddays(100000)
+            
+        }
+        
+        ageing_check <- ( (isolate(rendered_data$data_retrieved) + app_vars$auto_refresh) > as_date(now()) )
+        
+        if(ageing_check){
+            rendered_data <-readRDS(file=app_vars$Rdata_file)
+        }else
+        {
+            source("./r/trello.R", echo = F, prompt.echo = "", spaced = F)
+            source("./r/eval.R", echo = F, prompt.echo = "", spaced = F)
+            
+            
+            normalised_data$data_retrieved <- now()
+            presentation_data$data_retrieved <- now()
+            
+            saveRDS(normalised_data, file=app_vars$Ndata_file)  
+            saveRDS(presentation_data, file=app_vars$Pdata_file) 
+            
+            
+            rendered_data$data_retrieved <- now()
+            
+            rendered_data$render.kanban = project_kanban_tables(presentation_data,app_vars)
+            rendered_data$render.roadmap <- projects_roadmap(presentation_data,app_vars,as_date(cut(app_vars$today, "month")))
+            rendered_data$render.projects <- projects_summary(presentation_data,app_vars)
+            rendered_data$render.issues <- issues_summary(presentation_data,app_vars)
+            rendered_data$render.actions <- actions_summary(presentation_data,app_vars)
+            rendered_data$render.tasks <- consolidated_tasks(presentation_data,app_vars)
+            rendered_data$render.people_freq <- people_freq(presentation_data,app_vars)
+            rendered_data$render.project_freq <- project_freq(presentation_data,app_vars)
+            rendered_data$render.stats_summary1 <- stats_summary1(presentation_data)
+            rendered_data$render.stats_summary2 <- stats_summary2(presentation_data)
+            rendered_data$render.stats_daily <- stats_daily(presentation_data)
+            rendered_data$render.update_msg <- last_update_date(rendered_data)
+            
+
+            saveRDS(rendered_data, file=app_vars$Rdata_file) 
+        }
+        
+        
+    
+        }else{
+            source("./r/trello.R", echo = F, prompt.echo = "", spaced = F)
+            source("./r/eval.R", echo = F, prompt.echo = "", spaced = F)
+            
+            
+            normalised_data$data_retrieved <- now()
+            presentation_data$data_retrieved <- now()
+            
+            saveRDS(normalised_data, file=app_vars$Ndata_file)  
+            saveRDS(presentation_data, file=app_vars$Pdata_file) 
+            
+            
+            rendered_data$data_retrieved <- now()
+            
+            rendered_data$render.kanban = project_kanban_tables(presentation_data,app_vars)
+            rendered_data$render.roadmap <- projects_roadmap(presentation_data,app_vars,as_date(cut(app_vars$today, "month")))
+            rendered_data$render.projects <- projects_summary(presentation_data,app_vars)
+            rendered_data$render.issues <- issues_summary(presentation_data,app_vars)
+            rendered_data$render.actions <- actions_summary(presentation_data,app_vars)
+            rendered_data$render.tasks <- consolidated_tasks(presentation_data,app_vars)
+            rendered_data$render.people_freq <- people_freq(presentation_data,app_vars)
+            rendered_data$render.project_freq <- project_freq(presentation_data,app_vars)
+            rendered_data$render.stats_summary1 <- stats_summary1(presentation_data)
+            rendered_data$render.stats_summary2 <- stats_summary2(presentation_data)
+            rendered_data$render.stats_daily <- stats_daily(presentation_data)
+            rendered_data$render.update_msg <- last_update_date(rendered_data)
+            
+            
+            saveRDS(rendered_data, file=app_vars$Rdata_file) 
+        
+    }   
+    
+
+    output$summary1.Backlog <- renderText ({
+        rendered_data$render.stats_summary1$Backlog
+    })
+    
+    output$summary1.Planning <- renderText ({
+        rendered_data$render.stats_summary1$Planning
+    })
+    
+    output$summary1.InProgress <- renderText ({
+        rendered_data$render.stats_summary1$InProgress
+    })
+    
+    output$summary1.Complete <- renderText ({
+        rendered_data$render.stats_summary1$Complete
+    })
+    
+    output$summary1.R <- renderText ({
+        rendered_data$render.stats_summary1$R
+    })
+    
+    output$summary1.A <- renderText ({
+        rendered_data$render.stats_summary1$A
+    })
+    
+    output$summary1.G <- renderText ({
+        rendered_data$render.stats_summary1$G
+    })
+    
+    
+    output$project_list_backlog <- function(){
+        rendered_data$render.kanban$project_list_backlog
+    }  
+    
+    output$project_list_planning <- function(){
+        rendered_data$render.kanban$project_list_planning
+    }  
+    
+    output$project_list_active <- function(){
+        rendered_data$render.kanban$project_list_active
+    } 
+    
+    output$project_list_complete <- function(){
+        rendered_data$render.kanban$project_list_complete
+    }  
+    
+    output$projects_roadmap <- renderPlotly({
+    rendered_data$render.roadmap
+    
+    })
+
  
-shinyApp(ui, server)
+    output$summary2.Backlog <- renderText ({
+        rendered_data$render.stats_summary1$Backlog
+    })
+    
+    output$summary2.Planning <- renderText ({
+        rendered_data$render.stats_summary1$Planning
+    })
+    
+    output$summary2.InProgress <- renderText ({
+        rendered_data$render.stats_summary1$InProgress
+    })
+    
+    output$summary2.Complete <- renderText ({
+        rendered_data$render.stats_summary1$Complete
+    })
+    
+    output$summary2.R <- renderText ({
+        rendered_data$render.stats_summary1$R
+    })
+    
+    output$summary2.A <- renderText ({
+        rendered_data$render.stats_summary1$A
+    })
+    
+    output$summary2.G <- renderText ({
+        rendered_data$render.stats_summary1$G
+    })
+    
+    
+    output$summary2.late.start <- renderText ({
+        rendered_data$render.stats_summary2$late.start
+    })    
+
+    output$summary2.overdue <- renderText ({
+        rendered_data$render.stats_summary2$overdue
+    })    
+    
+    output$summary2.late.tasks <- renderText ({
+        rendered_data$render.stats_summary2$late.tasks
+    })    
+    
+    output$summary2.issue.R <- renderText ({
+        rendered_data$render.stats_summary2$issue.R
+    })    
+    
+    output$summary2.issue.A <- renderText ({
+        rendered_data$render.stats_summary2$issue.A
+    })    
+    
+    output$summary2.actions <- renderText ({
+        rendered_data$render.stats_summary2$open.actions
+    })   
+    
+    
+
+    output$projects <- function(){
+        rendered_data$render.projects
+    }  
+    
+    output$issues_summary <- function(){
+        rendered_data$render.issues
+    } 
+    
+    output$actions_summary <- function(){
+        rendered_data$render.issues
+    } 
+    
+    
+    
+    
+    output$consolidated_tasks <- renderText ({
+        rendered_data$render.tasks
+    })  
+    output$stats_dailyR <- renderText ({
+        rendered_data$render.stats_daily$R
+    })   
+    
+    output$stats_dailyA <- renderText ({
+        rendered_data$render.stats_daily$A
+    })   
+    
+    output$stats_dailyG <- renderText ({
+        rendered_data$render.stats_daily$G
+    })   
+    
+    output$people_freq <- function(){
+        rendered_data$render.people_freq
+    } 
+    
+    output$project_freq <- function(){
+        rendered_data$render.project_freq
+    } 
+    
+    
+output$update_msg <- renderText ({
+    rendered_data$render.update_msg
+})
+
+
+
+
+
+
+message("Initial Load Complete")
+}
+
+
+# Run the application 
+shinyApp(ui = ui, server = server)

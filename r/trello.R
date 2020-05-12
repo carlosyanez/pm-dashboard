@@ -290,7 +290,7 @@ trello_normalise <-function(trello,programme_board,tasks_states){
            Impact = gsub(x = Impact, pattern = "Impact:", replacement = ""),
            Action = gsub(x = Action, pattern = "Action:", replacement = "")) %>%
     mutate(due=as_date(due)) %>%
-    left_join((RAG_replace %>% select(labels=colour,letter)),by="labels") %>%
+    left_join((app_vars$RAG_replace %>% select(labels=colour,letter)),by="labels") %>%
     mutate(letter=ifelse((labels %in% c("complete","closed")),"g",letter),
            State=ifelse((labels %in% c("complete","closed")),"Closed","Open"))%>%
     select(Severity=letter,Project=Project_Name,Title=name,due,Issue,Impact,Action,State,Assignee=assignee,id,Project_id=idBoard,url=shortUrl)
@@ -309,7 +309,7 @@ trello_normalise <-function(trello,programme_board,tasks_states){
   
   tasks <- collated_cards %>% filter(!(id %in% meetings$id) & 
                                        !(id %in% issues$id) & 
-                                       !(id %in% projects$card_id) &
+                                       !(id %in% projects$Project_id) &
                                        isTemplate==FALSE &
                                        !(Project_Name %in% programme_board) &
                                        !(List_Name %in% c("Project Details"))) %>%
@@ -352,8 +352,9 @@ trello_normalise <-function(trello,programme_board,tasks_states){
     select(type=name_cklst,action,assignee,state,due, id,Project_id=idBoard,Task_id=idCard) %>%
     left_join((projects %>% select(Project_id,Project=Name)),by="Project_id") %>%
     filter(type=="Actions") %>% 
-    left_join((action_replace %>% select(state=Original,State=Replace)),by="state") %>%
+    left_join((app_vars$action_replace %>% select(state=Original,Replacement)),by="state") %>%
     select(-type,-state) %>%
+    mutate(State=Replacement) %>%
     left_join((meetings  %>% 
                  select(id,url) %>% unique(.) %>%
                  select(Task_id=id,url)),by="Task_id")
@@ -368,8 +369,8 @@ trello_normalise <-function(trello,programme_board,tasks_states){
   output$issues <- issues
   output$meetings <- meetings
   output$actions <- actions
-  output$collated_cards <- collated_cards
-  output$boards <- trello$boards
+#  output$collated_cards <- collated_cards
+#  output$boards <- trello$boards
   
 
   output
@@ -377,12 +378,14 @@ trello_normalise <-function(trello,programme_board,tasks_states){
 
 ##code to run
 
-my_token <- trello_token(trello_key)
+my_token <- trello_token(app_vars$trello_key)
 trello<-trello_retrieve_data(my_token)
-normalised_data <- trello_normalise(trello,programme_board,tasks_states)
+normalised_data <- trello_normalise(trello,app_vars$programme_board,app_vars$tasks_states)
+normalised_data$data_retrieved <- now()
+
 rm(my_token,trello)
-rm(trello_key)
-  
-  
+#rm(app_vars$trello_key)
+
+message("Trello Data Loaded")
   
  

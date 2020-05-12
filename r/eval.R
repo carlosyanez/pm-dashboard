@@ -1,7 +1,7 @@
 ##### REQUIRED
 ### normalised_data
-###status_colours
-#### project_kanban_background
+###app_vars$status_colours
+#### app_vars$project_kanban_background
 
 if(!require(tidyverse)) install.packages("tidyverse", repos = "http://cran.us.r-project.org")
 if(!require(lubridate)) install.packages("lubridate", repos = "http://cran.us.r-project.org")
@@ -19,16 +19,14 @@ library(kableExtra)
 ##########
 
 #setwd("./")
-if(!exists("normalised_data")){
-  normalised_data<-readRDS(file=Rdata_file)
+#if(!exists("normalised_data")){
+#  normalised_data<-readRDS(file=app_vars$Rdata_file)
   
-}
+#}
 
 
 eval_tasks <- function(normalised_data,
-                       status_colours,
-                       project_kanban_background, 
-                       today, t.default_colour){
+                       app_vars){
   
   tasks <- normalised_data$tasks
   
@@ -45,9 +43,9 @@ eval_tasks <- function(normalised_data,
   
   # Add metrics
   
-  tasks <- tasks %>% mutate(metric_today_minus_end=ifelse(is.na(end),10^6,as.duration(interval(today,end)) / ddays(1)),
-                            metric_start_minus_today=ifelse(is.na(start),-10^6,as.duration(interval(start,today)) / ddays(1)),
-                            metric_activity_minus_today=ifelse(is.na(dateLastActivity),-10^6,as.duration(interval(dateLastActivity,today)) / ddays(1)))
+  tasks <- tasks %>% mutate(metric_today_minus_end=ifelse(is.na(end),10^6,as.duration(interval(app_vars$today,end)) / ddays(1)),
+                            metric_start_minus_today=ifelse(is.na(start),-10^6,as.duration(interval(start,app_vars$today)) / ddays(1)),
+                            metric_activity_minus_today=ifelse(is.na(dateLastActivity),-10^6,as.duration(interval(dateLastActivity,app_vars$today)) / ddays(1)))
   
   
   
@@ -86,8 +84,8 @@ eval_tasks <- function(normalised_data,
   ####
   ### add colour options
   
-  tasks <- tasks %>% left_join(status_colours %>% select(RAG=colour_short,RAG_colour=hex),by="RAG") %>%
-    left_join(project_kanban_background %>% select(State=Task,State_colour=hex),by="State")
+  tasks <- tasks %>% left_join(app_vars$status_colours %>% select(RAG=colour_short,RAG_colour=hex),by="RAG") %>%
+    left_join(app_vars$project_kanban_background %>% select(State=Task,State_colour=hex),by="State")
   
   
   ## add latest comment:
@@ -113,32 +111,32 @@ eval_tasks <- function(normalised_data,
   tasks <- tasks %>%
     mutate(t.RAG=cell_spec(RAG,color=RAG_colour,background = RAG_colour,tooltip=RAG_comment),
            t.Task=cell_spec(Task,link=url,
-                            color=ifelse(State=="Complete",State_colour,t.default_colour),
+                            color=ifelse(State=="Complete",State_colour,app_vars$t.default_colour),
                             tooltip="Click to see source"),
            t.assignee = assignee,
            t.State = cell_spec(State,color="white",background=State_colour,tooltip=comment),
            t.start = cell_spec(ifelse(is.na(strftime(start)),
                                       NA,
                                       paste(day(start),month(start, label=TRUE))),color=ifelse(metric_start_minus_today>0,
-                                                  (status_colours %>%
+                                                  (app_vars$status_colours %>%
                                                      filter(colour_short=="R") %>% 
                                                      pull(hex)),
                                                   ifelse(metric_start_minus_today>-1,
-                                                         (status_colours %>%
+                                                         (app_vars$status_colours %>%
                                                             filter(colour_short=="A") %>% 
                                                             pull(hex)),
-                                                         t.default_colour))),
+                                                         app_vars$t.default_colour))),
            t.end= cell_spec(ifelse(is.na(strftime(end)),
                                    NA,
                                    paste(day(end),month(end, label=TRUE))),color= ifelse(metric_today_minus_end<0,
-                                              (status_colours %>%
+                                              (app_vars$status_colours %>%
                                                  filter(colour_short=="R") %>% 
                                                  pull(hex)),
                                               ifelse(metric_today_minus_end<1,
-                                                     (status_colours %>%
+                                                     (app_vars$status_colours %>%
                                                         filter(colour_short=="A") %>% 
                                                         pull(hex)),
-                                                     t.default_colour))
+                                                     app_vars$t.default_colour))
            ),
            
     )
@@ -147,12 +145,10 @@ eval_tasks <- function(normalised_data,
 
 
 eval_actions <- function(normalised_data,
-                         status_colours,
-                         project_kanban_background, 
-                         today, t.default_colour){
+                         app_vars){
   
   actions <- normalised_data$actions %>% 
-    mutate(metric_today_minus_end=ifelse(is.na(strftime(due)),10^6,as.duration(interval(today,due)) / ddays(1))) %>% 
+    mutate(metric_today_minus_end=ifelse(is.na(strftime(due)),10^6,as.duration(interval(app_vars$today,due)) / ddays(1))) %>% 
     mutate(RAG="x",RAG_comment="-") %>%
     mutate(eval_no_due_date=is.na(strftime(due)) ,
            RAG=ifelse(eval_no_due_date,paste(RAG,"R"),RAG),
@@ -175,8 +171,8 @@ eval_actions <- function(normalised_data,
   
   ### add colour options
   
-  actions <- actions %>% left_join(status_colours %>% select(RAG=colour_short,RAG_colour=hex),by="RAG") %>%
-    left_join((project_kanban_background %>% select(State=Action,State_colour=hex)),by="State")
+  actions <- actions %>% left_join(app_vars$status_colours %>% select(RAG=colour_short,RAG_colour=hex),by="RAG") %>%
+    left_join((app_vars$project_kanban_background %>% select(State=Action,State_colour=hex)),by="State")
   
   actions <- actions %>%
     mutate(t.RAG=cell_spec(RAG,color=RAG_colour,background = RAG_colour,tooltip=RAG_comment),
@@ -185,17 +181,17 @@ eval_actions <- function(normalised_data,
            t.due = cell_spec(ifelse(is.na(strftime(due)),
                                     NA,
                                     paste(day(due),month(due, label=TRUE))),color= ifelse(metric_today_minus_end<-7,
-                                               (status_colours %>%
+                                               (app_vars$status_colours %>%
                                                   filter(colour_short=="R") %>% 
                                                   pull(hex)),
                                                ifelse(metric_today_minus_end<0,
-                                                      (status_colours %>%
+                                                      (app_vars$status_colours %>%
                                                          filter(colour_short=="A") %>% 
                                                          pull(hex)),
-                                                      t.default_colour))
+                                                      app_vars$t.default_colour))
            ),
            t.Action=cell_spec(action,link=url,
-                              color=ifelse(State=="Closed",State_colour,t.default_colour),
+                              color=ifelse(State=="Closed",State_colour,app_vars$t.default_colour),
                               tooltip="Click to see source"),
            t.Project = Project
     )
@@ -204,13 +200,11 @@ eval_actions <- function(normalised_data,
 }
 
 eval_issues <- function(normalised_data,
-                        status_colours,
-                        project_kanban_background, 
-                        today, t.default_colour){
+                        app_vars){
   
   
   issues <- normalised_data$issues %>%
-    mutate(metric_today_minus_end=ifelse(is.na(strftime(due)),10^6,as.duration(interval(today,due)) / ddays(1))) %>%
+    mutate(metric_today_minus_end=ifelse(is.na(strftime(due)),10^6,as.duration(interval(app_vars$today,due)) / ddays(1))) %>%
     mutate(RAG=Severity,RAG_comment="-") %>%
     mutate(eval_no_due_date=is.na(strftime(due)) ,
            RAG=ifelse(eval_no_due_date,paste(RAG,"R"),RAG),
@@ -232,8 +226,8 @@ eval_issues <- function(normalised_data,
     mutate(RAG_comment = gsub(x = RAG_comment, pattern = "-,", replacement = "-")) 
   
   
-  issues <- issues %>% left_join(status_colours %>% select(RAG=colour_short,RAG_colour=hex),by="RAG") %>%
-    left_join((project_kanban_background %>% select(State=Issue,State_colour=hex)),by="State")
+  issues <- issues %>% left_join(app_vars$status_colours %>% select(RAG=colour_short,RAG_colour=hex),by="RAG") %>%
+    left_join((app_vars$project_kanban_background %>% select(State=Issue,State_colour=hex)),by="State")
   
   ##add latest comments
   
@@ -266,25 +260,25 @@ eval_issues <- function(normalised_data,
            t.due = cell_spec(ifelse(is.na(strftime(due)),
                                     NA,
                                     paste(day(due),month(due, label=TRUE))),color= ifelse(metric_today_minus_end<-7,
-                                               (status_colours %>%
+                                               (app_vars$status_colours %>%
                                                   filter(colour_short=="R") %>% 
                                                   pull(hex)),
                                                ifelse(metric_today_minus_end<0,
-                                                      (status_colours %>%
+                                                      (app_vars$status_colours %>%
                                                          filter(colour_short=="A") %>% 
                                                          pull(hex)),
-                                                      t.default_colour))
+                                                      app_vars$t.default_colour))
            ),
            t.Title=cell_spec(Title,link=url,
-                             color=ifelse(State=="Done",State_colour,t.default_colour),
+                             color=ifelse(State=="Done",State_colour,app_vars$t.default_colour),
                              tooltip="Click to see source"),
            t.Issue=cell_spec(Issue,link=url,
-                             color=ifelse(State=="Done",State_colour,t.default_colour),
+                             color=ifelse(State=="Done",State_colour,app_vars$t.default_colour),
                              tooltip="Click to see source"),
            t.Impact=cell_spec(Impact,
-                              color=ifelse(State=="Done",State_colour,t.default_colour)),
+                              color=ifelse(State=="Done",State_colour,app_vars$t.default_colour)),
            t.Action=cell_spec(Action,
-                              color=ifelse(State=="Done",State_colour,t.default_colour),
+                              color=ifelse(State=="Done",State_colour,app_vars$t.default_colour),
                               tooltip=comment)
            
     )
@@ -292,9 +286,7 @@ eval_issues <- function(normalised_data,
 }
 
 eval_projects <- function(normalised_data,
-                          status_colours,
-                          project_kanban_background, 
-                          today, t.default_colour){
+                          app_vars){
   
   task_start <- presentation_data$tasks %>% 
     filter(!is.na(strftime(start))) %>%
@@ -392,7 +384,7 @@ eval_projects <- function(normalised_data,
     left_join(task_metrics,by="Project_id") %>%
     left_join(action_metrics,by="Project_id") %>%
     left_join(issue_metrics,by="Project_id") %>%
-    left_join((status_colours%>% select(labels=colour,RAG=colour_short)),by="labels") %>%
+    left_join((app_vars$status_colours%>% select(labels=colour,RAG=colour_short)),by="labels") %>%
     mutate(RAG_comment="-") 
   
   #Fill end and start dates if not available
@@ -406,10 +398,10 @@ eval_projects <- function(normalised_data,
     projects$start <- projects$end
   }
   
-  projects <- projects %>% mutate(metric_today_minus_end=ifelse(is.na(end),10^6,as.duration(interval(today,end)) / ddays(1)),
-                                  metric_start_minus_today=ifelse(is.na(start),-10^6,as.duration(interval(start,today)) / ddays(1)),
+  projects <- projects %>% mutate(metric_today_minus_end=ifelse(is.na(end),10^6,as.duration(interval(app_vars$today,end)) / ddays(1)),
+                                  metric_start_minus_today=ifelse(is.na(start),-10^6,as.duration(interval(start,app_vars$today)) / ddays(1)),
                                   metric_activity_minus_today=ifelse(is.na(comment_updated),-10^6,
-                                                                     as.duration(interval(comment_updated,today)) / ddays(1))) %>%
+                                                                     as.duration(interval(comment_updated,app_vars$today)) / ddays(1))) %>%
     mutate(task.progress=ifelse(is.na(task.progress),0,round(100*task.progress)),
            task.eval_overdue=ifelse(is.na(task.eval_overdue),0,task.eval_overdue),
            issue.open=ifelse(is.na(issue.open),0,issue.open)
@@ -487,52 +479,52 @@ eval_projects <- function(normalised_data,
            RAG_comment=ifelse(eval,paste(RAG_comment,
                                          "No project plan",sep=", "),
                               RAG_comment)) %>%  ### No board, Planning R , Progress R
-    mutate(eval=((State %in% c("In Progress")) & metric_activity_minus_today>update_date_limit_1),
+    mutate(eval=((State %in% c("In Progress")) & metric_activity_minus_today>app_vars$update_date_limit_1),
            RAG=ifelse(eval,
-                      ifelse((metric_activity_minus_today>update_date_limit_2),paste(RAG,"R"),paste(RAG,"A")),RAG),
+                      ifelse((metric_activity_minus_today>app_vars$update_date_limit_2),paste(RAG,"R"),paste(RAG,"A")),RAG),
            RAG_comment=ifelse(eval,
-                              ifelse((metric_activity_minus_today>update_date_limit_2),
+                              ifelse((metric_activity_minus_today>app_vars$update_date_limit_2),
                                      paste(RAG_comment,"Missing recent status update",sep=", "),
                                      paste(RAG_comment,"Very old update",sep=", ")),
-                              RAG_comment)) %>%  ### Last update older than   update_date_limit_1
-    ### Last update older than update_date_limit_2
-    mutate(eval=((State %in% c("Planning","In Progress")) & ifelse(!is.na(task.R),task.R>task.R.threshold.1,FALSE)),
+                              RAG_comment)) %>%  ### Last update older than   app_vars$update_date_limit_1
+    ### Last update older than app_vars$update_date_limit_2
+    mutate(eval=((State %in% c("Planning","In Progress")) & ifelse(!is.na(task.R),task.R>app_vars$task.R.threshold.1,FALSE)),
            RAG=ifelse(eval,
-                      ifelse((task.R>task.R.threshold.1),paste(RAG,"R"),paste(RAG,"A")),RAG),
+                      ifelse((task.R>app_vars$task.R.threshold.1),paste(RAG,"R"),paste(RAG,"A")),RAG),
            RAG_comment=ifelse(eval,paste(RAG_comment,paste("Tasks R:",task.R),sep=", "),
                               RAG_comment)) %>%    ### Task_R treshold 1 -A
     ### Task_R treshold 2 -R
-    mutate(eval=((State %in% c("Planning","In Progress")) & ifelse(!is.na(task.A),task.A>task.A.threshold.1,FALSE)),
+    mutate(eval=((State %in% c("Planning","In Progress")) & ifelse(!is.na(task.A),task.A>app_vars$task.A.threshold.1,FALSE)),
            RAG=ifelse(eval,
-                      ifelse((task.A>task.A.threshold.1),paste(RAG,"R"),paste(RAG,"A")),RAG),
+                      ifelse((task.A>app_vars$task.A.threshold.1),paste(RAG,"R"),paste(RAG,"A")),RAG),
            RAG_comment=ifelse(eval,paste(RAG_comment,paste("Tasks A:",task.A),sep=", "),
                               RAG_comment)) %>%               ### Task_A treshold 1 -A
     ### Task_A treshold 2 -R
-    mutate(eval=((State %in% c("Planning","In Progress")) & ifelse(!is.na(issue.R),issue.R>issue.R.threshold.1,
+    mutate(eval=((State %in% c("Planning","In Progress")) & ifelse(!is.na(issue.R),issue.R>app_vars$issue.R.threshold.1,
                                                                    FALSE)),
            RAG=ifelse(eval,
-                      ifelse((issue.R>issue.R.threshold.1),paste(RAG,"R"),paste(RAG,"A")),RAG),
+                      ifelse((issue.R>app_vars$issue.R.threshold.1),paste(RAG,"R"),paste(RAG,"A")),RAG),
            RAG_comment=ifelse(eval,paste(RAG_comment,paste("Isssues R:",issue.R),sep=", "),
                               RAG_comment)) %>%               ### Issue_R treshold 1 -A
     ### Issue_R treshold 2 -R
-    mutate(eval=((State %in% c("Planning","In Progress")) & ifelse(!is.na(issue.A),issue.A>issue.A.threshold.1,
+    mutate(eval=((State %in% c("Planning","In Progress")) & ifelse(!is.na(issue.A),issue.A>app_vars$issue.A.threshold.1,
                                                                    FALSE)),
            RAG=ifelse(eval,
-                      ifelse((issue.A>issue.A.threshold.1),paste(RAG,"R"),paste(RAG,"A")),RAG),
+                      ifelse((issue.A>app_vars$issue.A.threshold.1),paste(RAG,"R"),paste(RAG,"A")),RAG),
            RAG_comment=ifelse(eval,paste(RAG_comment,paste("Issues A:",issue.A),sep=", "),
                               RAG_comment)) %>%               ### Issue_A treshold 1 -A
     ### Issue_A treshold 2 -R
-    mutate(eval=((State %in% c("Planning","In Progress")) & ifelse(!is.na(action.R),action.R>action.R.threshold.1,
+    mutate(eval=((State %in% c("Planning","In Progress")) & ifelse(!is.na(action.R),action.R>app_vars$action.R.threshold.1,
                                                                    FALSE)),
            RAG=ifelse(eval,
-                      ifelse((action.R>action.R.threshold.1),paste(RAG,"R"),paste(RAG,"A")),RAG),
+                      ifelse((action.R>app_vars$action.R.threshold.1),paste(RAG,"R"),paste(RAG,"A")),RAG),
            RAG_comment=ifelse(eval,paste(RAG_comment,paste("Actions R:",action.R),sep=", "),
                               RAG_comment)) %>%               ### Action_R treshold 1 -A
     ### Action_R treshold 2 -R
-    mutate(eval=((State %in% c("Planning","In Progress")) & ifelse(!is.na(action.A),action.A>action.A.threshold.1,
+    mutate(eval=((State %in% c("Planning","In Progress")) & ifelse(!is.na(action.A),action.A>app_vars$action.A.threshold.1,
                                                                    FALSE)),
            RAG=ifelse(eval,
-                      ifelse((action.A>action.A.threshold.1),paste(RAG,"R"),paste(RAG,"A")),RAG),
+                      ifelse((action.A>app_vars$action.A.threshold.1),paste(RAG,"R"),paste(RAG,"A")),RAG),
            RAG_comment=ifelse(eval,paste(RAG_comment,paste("Actions A:",action.A),sep=", "),
                               RAG_comment)) %>%               ### Action_A treshold 1 -A
     ### Action_A treshold 2 -R
@@ -544,49 +536,50 @@ eval_projects <- function(normalised_data,
     select(-eval,-task.start,-task.end,-action.due,-issue.due,-labels)                                                           
   
   #add colours
-  projects <- projects %>% left_join(status_colours %>% select(RAG=colour_short,RAG_colour=hex),by="RAG") %>%
-    left_join(project_kanban_background %>% select(State,State_colour=hex),by="State")
+  projects <- projects %>% left_join(app_vars$status_colours %>% select(RAG=colour_short,RAG_colour=hex),by="RAG") %>%
+    left_join(app_vars$project_kanban_background %>% select(State,State_colour=hex),by="State")
   
   #create table items
   projects <- projects %>%
     mutate(eval=(State %in% c("Closed","Complete")),
            t.RAG=cell_spec(RAG,color=RAG_colour,background = RAG_colour,tooltip=RAG_comment),
            t.Project=cell_spec(Name,link=url,
-                               color=ifelse(eval,State_colour,t.default_colour),
+                               color=ifelse(eval,State_colour,app_vars$t.default_colour),
                                tooltip="Click to see source",
                                align="left",bold=T),
-           t.Project_Lead = cell_spec(Project_Lead,color=ifelse(eval,State_colour,t.default_colour)),
-           t.Project_Manager = cell_spec(Project_Manager,color=ifelse(eval,State_colour,t.default_colour)),
+           t.Project_Lead = cell_spec(Project_Lead,color=ifelse(eval,State_colour,app_vars$t.default_colour)),
+           t.Project_Manager = cell_spec(Project_Manager,color=ifelse(eval,State_colour,app_vars$t.default_colour)),
            t.State = cell_spec(State,color="white",background=State_colour,tooltip=Updates),
-           t.Update=cell_spec(Updates,color=ifelse(eval,State_colour,t.default_colour),align="left"),
+           t.Update=cell_spec(Updates,color=ifelse(eval,State_colour,app_vars$t.default_colour),align="left"),
            t.start = cell_spec(ifelse(is.na(strftime(start)),
                                       NA,
                                       paste(day(start),month(start, label=TRUE))),color= ifelse(eval,State_colour,
                                                    ifelse(metric_start_minus_today>0,
-                                                          (status_colours %>%
+                                                          (app_vars$status_colours %>%
                                                              filter(colour_short=="R") %>% 
                                                              pull(hex)),
                                                           ifelse(metric_start_minus_today>-1,
-                                                                 (status_colours %>%
+                                                                 (app_vars$status_colours %>%
                                                                     filter(colour_short=="A") %>% 
                                                                     pull(hex)),
-                                                                 t.default_colour)))),
+                                                                 app_vars$t.default_colour)))),
            t.end= cell_spec(ifelse(is.na(strftime(end)),
                                    NA,
                                    paste(day(end),month(end, label=TRUE))),color= ifelse(eval,State_colour,
                                               ifelse(metric_today_minus_end<0,
-                                                     (status_colours %>%
+                                                     (app_vars$status_colours %>%
                                                         filter(colour_short=="R") %>% 
                                                         pull(hex)),
                                                      ifelse(metric_today_minus_end<1,
-                                                            (status_colours %>%
+                                                            (app_vars$status_colours %>%
                                                                filter(colour_short=="A") %>% 
                                                                pull(hex)),
-                                                            t.default_colour)))),
-           t.Progress=ifelse(State %in% c("In Progress"),cell_spec(task.progress,color="white",background = "lightgreen",tooltip=paste("Completion percentage:",task.progress)),""),
-           t.Overdue_Tasks = ifelse(!(State %in% c("Complete","Backlog")),cell_spec(task.eval_overdue,color="white",background = "orange",tooltip=paste("Overdue Tasks: R=",task.eval_overdue)),""),
-           t.Open_Issues = ifelse(!(State %in% c("Complete","Backlog")),cell_spec(issue.open,color="white",background = "orange",tooltip=paste("Open Issues: R=",issue.R,", A=",issue.A,", G=",issue.G)),""),
-           k.Project = cell_spec(Name,color="white",background = RAG_colour,tooltip=Updates,link=url),
+                                                            app_vars$t.default_colour)))),
+           t.Progress=ifelse(State %in% c("In Progress"),cell_spec(task.progress,color="white",background = semantic_palette[["olive"]],tooltip=paste("Completion percentage:",task.progress)),""),
+           t.Overdue_Tasks = ifelse(!(State %in% c("Complete","Backlog")),cell_spec(task.eval_overdue,color="white",background = semantic_palette[["violet"]],tooltip=paste("Overdue Tasks: R=",task.eval_overdue)),""),
+           t.Open_Issues = ifelse(!(State %in% c("Complete","Backlog")),cell_spec(issue.open,color="white",background = semantic_palette[["violet"]],tooltip=paste("Open Issues: R=",issue.R,", A=",issue.A,", G=",issue.G)),""),
+           k.Project = cell_spec(Name,color="white",background = ifelse((State %in% c("Complete")),State_colour,RAG_colour),
+                                 tooltip=Updates,link=url),
            k.Progress=t.Progress,
            k.Overdue_Tasks = t.Overdue_Tasks,
            k.Open_Issues = t.Open_Issues
@@ -646,10 +639,10 @@ eval_consolidated_items <- function(presentation_data){
                                              t.State,t.due))
   
   
-  t.consolidated_tasks <-  t.consolidated_tasks %>% mutate(f.condition1=(due <= today),
+  t.consolidated_tasks <-  t.consolidated_tasks %>% mutate(f.condition1=(due <= app_vars$today),
                                                            
-                                                           f.condition2=(due < (today + horizon_span1)),
-                                                           f.condition3=(due < (today + horizon_span2)),
+                                                           f.condition2=(due < (app_vars$today + app_vars$horizon_span1)),
+                                                           f.condition3=(due < (app_vars$today + app_vars$horizon_span2)),
                                                            f.condition4=is.na(strftime(due)),
                                                            f.condition5=!(State %in% c("Complete","Closed")),
                                                            f.selection=((f.condition1 | f.condition3 |f.condition4)
@@ -666,28 +659,11 @@ eval_consolidated_items <- function(presentation_data){
 }
 
 
-eval_items_stats <- function(t.consolidated_tasks,palette){
-  
-  set.seed(1234)
+eval_items_stats <- function(t.consolidated_tasks){
   
   output <-vector(mode = "list", length = 0)
   
-#  cloud1<-t.consolidated_tasks %>% group_by(Project) %>% summarise(freq=n()) %>%
-#    ungroup() %>% 
-#    mutate(word=as.factor(Project))%>%
-#    select(word,freq) %>% arrange(-freq)
-  
-#  output$wordcloud_projects <- wordcloud(cloud1$word,cloud1$freq,scale=c(3,.1),min.freq=1, random.color=TRUE,colors=brewer.pal(8, palette))
-  
- # cloud2<-t.consolidated_tasks %>%
- #   separate_rows(assignee,sep=", ") %>%
-#    group_by(assignee) %>% summarise(freq=n()) %>%
-#    ungroup() %>% 
- #   mutate(word=as.factor(assignee))%>%
-  #  select(word,freq) %>% arrange(-freq)
-  
-  #output$wordcloud_assignee <- wordcloud(cloud2$word,cloud2$freq,scale=c(3,.1),min.freq=1, random.color=TRUE,colors=brewer.pal(8, palette))
-  
+
   output$person_frequency <- t.consolidated_tasks %>%
     separate_rows(assignee,sep=", ") %>% filter(!is.na(assignee)) %>%
     mutate(assignee=str_trim(assignee))  %>%
@@ -712,29 +688,22 @@ eval_items_stats <- function(t.consolidated_tasks,palette){
   
 }
 
-#Run
-###########
-##Run Functions
 
 presentation_data <-vector(mode = "list", length = 0)
 
-presentation_data$tasks <- eval_tasks(normalised_data,status_colours,
-                                      project_kanban_background, 
-                                      today, t.default_colour)
+presentation_data$tasks <- eval_tasks(normalised_data,app_vars)
 
-presentation_data$actions<- eval_actions(normalised_data,status_colours,
-                                         project_kanban_background, 
-                                         today, t.default_colour)
+presentation_data$actions<- eval_actions(normalised_data,app_vars)
 
-presentation_data$issues<- eval_issues(normalised_data,status_colours,
-                                       project_kanban_background, 
-                                       today, t.default_colour)
+presentation_data$issues<- eval_issues(normalised_data,app_vars)
 
-presentation_data$projects<- eval_projects(normalised_data,status_colours,
-                                           project_kanban_background, 
-                                           today, t.default_colour)
+presentation_data$projects<- eval_projects(normalised_data,app_vars)
 
-programme_stats <- eval_stats(presentation_data)
+presentation_data$programme_stats <- eval_stats(presentation_data)
 
-t.consolidated_tasks <- eval_consolidated_items(presentation_data)
-consolidated_stats <- eval_items_stats(t.consolidated_tasks,wordcloud_palette)
+presentation_data$t.consolidated_tasks <- eval_consolidated_items(presentation_data)
+
+presentation_data$consolidated_stats <- eval_items_stats(presentation_data$t.consolidated_tasks)
+
+message("Data Evaluated")
+

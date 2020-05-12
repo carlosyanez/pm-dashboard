@@ -17,10 +17,10 @@ t.consolidated_tasks <- bind_rows(presentation_data$tasks %>% mutate(Type="Task"
 ```
 
 ```{r}
-t.consolidated_tasks <-  t.consolidated_tasks %>% mutate(f.condition1=(due <= today),
+t.consolidated_tasks <-  t.consolidated_tasks %>% mutate(f.condition1=(due <= app_vars$today),
                                                         
-                                                        f.condition2=(due < (today + horizon_span1)),
-                                                        f.condition3=(due < (today + horizon_span2)),
+                                                        f.condition2=(due < (app_vars$today + app_vars$horizon_span1)),
+                                                        f.condition3=(due < (app_vars$today + app_vars$horizon_span2)),
                                                         f.condition4=is.na(strftime(due)),
                                                         f.condition5=!(State %in% c("Complete","Closed")),
                                                         f.selection=((f.condition1 | f.condition3 |f.condition4)
@@ -35,22 +35,38 @@ t.consolidated_tasks <-  t.consolidated_tasks %>% mutate(f.condition1=(due <= to
 
 
 ```{r}
-consolidated_stats$person_frequency %>% 
-  left_join(font_sizes,by="nbr") %>%
-  mutate(Assignee=cell_spec(assignee,font_size = size, 
-                            bold = (nbr %in% c(1,2,3))
-                            ,
-                            color = ifelse((nbr %in% c(1,2,3)),
-                                           "navy",
-                                           t.default_colour))) %>%
-    mutate(Workload=cell_spec(freq,font_size = size, 
-                            bold = (nbr %in% c(1,2,3))
-                            ,
-                            color = ifelse((nbr %in% c(1,2,3)),
-                                           "navy",
-                                           t.default_colour))) %>%
-  select(Assignee,Workload)%>%
-  kable(format = "html", escape = F) %>%
-       kable_styling(full_width = F) 
+#source("files/variables.R", echo = F, prompt.echo = "", spaced = F)
+
+actions <- trello$checklists %>% mutate(name_cklst=name) %>%
+    select(-id,-name,-pos) %>% unnest(checkItems) %>% select(-due) %>%
+    left_join(chk_list_temp,by="id") %>%
+    select(type=name_cklst,action,assignee,state,due, id,Project_id=idBoard,Task_id=idCard) %>%
+    left_join((projects %>% select(Project_id,Project=Name)),by="Project_id") %>%
+    filter(type=="Actions") %>% 
+    left_join((app_vars$action_replace %>% select(state=Original,Replace)),by="state") %>%
+    select(-type,-state) %>%
+    mutate(State=Replace) %>%
+    left_join((meetings  %>% 
+                 select(id,url) %>% unique(.) %>%
+                 select(Task_id=id,url)),by="Task_id")
+  
+actions
+```
+
+
+```{r}
+
+ tibble(text=c("Last Update:"),time=c(paste(day(normalised_data$data_retrieved)," ",
+       month(normalised_data$data_retrieved,label=TRUE), " ",
+       year(normalised_data$data_retrieved)," -- ",
+       hour(normalised_data$data_retrieved),
+       ":",
+      minute(normalised_data$data_retrieved),sep=""))) %>%
+      mutate(text=cell_spec(text,align="right"),
+             time=cell_spec(time,bold=T,align="left")) %>%
+        kable(format = "html", escape = F, col.names = NULL) %>%
+      kable_styling(full_width = F) 
+
+
 ```
 
