@@ -9,6 +9,7 @@ if(!require(trelloR)) install.packages("trelloR", repos = "http://cran.us.r-proj
 
 
 #library(shiny)
+library(tempR)
 library(semantic.dashboard) 
 library(tidyverse)
 library(knitr)
@@ -18,9 +19,11 @@ library(lubridate)
 library(plotly)
 library(trelloR)
 
+
 #########################
 
 source("./r/variables.R")
+saveRDS(app_vars, file="./files/vars.rds") 
 #normalised_data <-reactiveValues()
 #presentation_data <-reactiveValues()
 rendered_data <-reactiveValues()
@@ -38,13 +41,13 @@ tab_summary_1.0 <-fluidRow(
     h1("Programme's Synoptic View")
 )
 tab_summary_1.1 <-fluidRow(
-    valueBox("Backlog", textOutput("summary1.Backlog"), icon("hourglass outline"), color = "blue", width = 2,size="tiny"),
-    valueBox("Planning", textOutput("summary1.Planning"), icon("hourglass start"), color = "blue", width = 2,size="tiny"),
-    valueBox("In Progress", textOutput("summary1.InProgress"), icon("hourglass half"), color = "blue", width = 2,size="tiny"),
-    valueBox("Complete", textOutput("summary1.Complete"), icon("hourglass start"), color = "blue", width = 2,size="tiny"),
-    valueBox("R", textOutput("summary1.R"), icon("exclamation triangle"), color = "red", width = 2,size="tiny"),
-    valueBox("A", textOutput("summary1.A"), icon("exclamation circle"), color = "orange", width = 2,size="tiny"),
-    valueBox("G", textOutput("summary1.G"), icon("exclamation"), color = "green", width = 2,size="tiny")  
+    semantic.dashboard::valueBox("Backlog", textOutput("summary1.Backlog"), icon("hourglass outline"), color = "blue", width = 2,size="tiny"),
+    semantic.dashboard::valueBox("Planning", textOutput("summary1.Planning"), icon("hourglass start"), color = "blue", width = 2,size="tiny"),
+    semantic.dashboard::valueBox("In Progress", textOutput("summary1.InProgress"), icon("hourglass half"), color = "blue", width = 2,size="tiny"),
+    semantic.dashboard::valueBox("Complete", textOutput("summary1.Complete"), icon("hourglass start"), color = "blue", width = 2,size="tiny"),
+    semantic.dashboard::valueBox("R", textOutput("summary1.R"), icon("exclamation triangle"), color = "red", width = 2,size="tiny"),
+    semantic.dashboard::valueBox("A", textOutput("summary1.A"), icon("exclamation circle"), color = "orange", width = 2,size="tiny"),
+    semantic.dashboard::valueBox("G", textOutput("summary1.G"), icon("exclamation"), color = "green", width = 2,size="tiny")  
 )
 
 tab_summary_1.2 <-fluidRow(
@@ -83,17 +86,18 @@ tab_summary_1.4 <-fluidRow(
     h3("Roadmap")
 )
 
-tab_summary_1.5 <-  fluidRow(
-    dateRangeInput("daterange_roadmap", "Date range:",
-                   start = ymd(today()),
-                   end   = ymd(today()+dweeks(24)))
-    
+tab_summary_1.5 <-fluidRow(
+    semantic.dashboard::box(title="Date Selection",
+                            width=16,collapsible = TRUE,
+                            color=app_vars$c.background2,
+    uiOutput("date_range"))
 )
 
 tab_summary_1.6 <-  fluidRow(
     semantic.dashboard::box(title="Roadmap",
                             width=16,collapsible = FALSE,
                             color=app_vars$c.background2,
+                           
                             plotlyOutput("projects_roadmap"))
 )
 
@@ -102,22 +106,22 @@ tab_summary_2.0 <- fluidRow(
 )
 
 tab_summary_2.1  <-fluidRow(
-valueBox("Backlog", textOutput("summary2.Backlog"), icon("hourglass outline"), color = "blue", width = 2,size="tiny"),
-valueBox("Planning", textOutput("summary2.Planning"), icon("hourglass start"), color = "blue", width = 2,size="tiny"),
-valueBox("In Progress", textOutput("summary2.InProgress"), icon("hourglass half"), color = "blue", width = 2,size="tiny"),
-valueBox("Complete", textOutput("summary2.Complete"), icon("hourglass start"), color = "blue", width = 2,size="tiny"),
-valueBox("R", textOutput("summary2.R"), icon("exclamation triangle"), color = "red", width = 2,size="tiny"),
-valueBox("A", textOutput("summary2.A"), icon("exclamation circle"), color = "orange", width = 2,size="tiny"),
-valueBox("G", textOutput("summary2.G"), icon("exclamation"), color = "green", width = 2,size="tiny")  
+semantic.dashboard::valueBox("Backlog", textOutput("summary2.Backlog"), icon("hourglass outline"), color = "blue", width = 2,size="tiny"),
+semantic.dashboard::valueBox("Planning", textOutput("summary2.Planning"), icon("hourglass start"), color = "blue", width = 2,size="tiny"),
+semantic.dashboard::valueBox("In Progress", textOutput("summary2.InProgress"), icon("hourglass half"), color = "blue", width = 2,size="tiny"),
+semantic.dashboard::valueBox("Complete", textOutput("summary2.Complete"), icon("hourglass start"), color = "blue", width = 2,size="tiny"),
+semantic.dashboard::valueBox("R", textOutput("summary2.R"), icon("exclamation triangle"), color = "red", width = 2,size="tiny"),
+semantic.dashboard::valueBox("A", textOutput("summary2.A"), icon("exclamation circle"), color = "orange", width = 2,size="tiny"),
+semantic.dashboard::valueBox("G", textOutput("summary2.G"), icon("exclamation"), color = "green", width = 2,size="tiny")  
 )
 
 tab_summary_2.2 <- fluidRow(
-    valueBox("Late Start", textOutput("summary2.late.start"), icon("exclamation"), color = "violet", width = 2,size="tiny"),
-    valueBox("Overdue", textOutput("summary2.overdue"), icon("exclamation"), color = "violet", width = 2,size="tiny"),
-    valueBox("Late Tasks",textOutput("summary2.late.tasks"), icon("hourglass outline"), color = "violet", width = 2,size="tiny"),
-    valueBox("R Issues", textOutput("summary2.issue.R"), icon("exclamation"), color = "red", width = 2,size="tiny"),
-    valueBox("A Issues", textOutput("summary2.issue.A"), icon("exclamation"), color = "orange", width = 2,size="tiny"),
-    valueBox("Op Actions", textOutput("summary2.actions"), icon("hourglass outline"), color = "violet", width = 2,size="tiny")
+    semantic.dashboard::valueBox("Late Start", textOutput("summary2.late.start"), icon("exclamation"), color = "violet", width = 2,size="tiny"),
+    semantic.dashboard::valueBox("Overdue", textOutput("summary2.overdue"), icon("exclamation"), color = "violet", width = 2,size="tiny"),
+    semantic.dashboard::valueBox("Late Tasks",textOutput("summary2.late.tasks"), icon("hourglass outline"), color = "violet", width = 2,size="tiny"),
+    semantic.dashboard::valueBox("R Issues", textOutput("summary2.issue.R"), icon("exclamation"), color = "red", width = 2,size="tiny"),
+    semantic.dashboard::valueBox("A Issues", textOutput("summary2.issue.A"), icon("exclamation"), color = "orange", width = 2,size="tiny"),
+    semantic.dashboard::valueBox("Op Actions", textOutput("summary2.actions"), icon("hourglass outline"), color = "violet", width = 2,size="tiny")
 )
 
 tab_summary_2.3 <- fluidRow(
@@ -146,7 +150,7 @@ tab_summary_2.8 <- fluidRow(
 )
 
 tab_daily_summary_1.0 <- fluidRow(
-    h3("Daily Tracker")
+    h1("Daily Tracker")
 )
 
 tab_daily_summary_1.1 <- column(10,
@@ -156,11 +160,11 @@ tab_daily_summary_1.1 <- column(10,
 
 tab_daily_summary_1.2 <- column(6,
                                 h4("RAG Distribution"),
-                                valueBox("R", textOutput("stats_dailyR"), icon("exclamation"), color = "red", width = 2,size="tiny"),
+                                semantic.dashboard::valueBox("R", textOutput("stats_dailyR"), icon("exclamation"), color = "red", width = 2,size="tiny"),
                                 br(),
-                                valueBox("A", textOutput("stats_dailyA"), icon("exclamation"), color = "orange", width = 2,size="tiny"),
+                                semantic.dashboard::valueBox("A", textOutput("stats_dailyA"), icon("exclamation"), color = "orange", width = 2,size="tiny"),
                                 br(),
-                                valueBox("G", textOutput("stats_dailyG"), icon("exclamation"), color = "green", width = 2,size="tiny"),
+                                semantic.dashboard::valueBox("G", textOutput("stats_dailyG"), icon("exclamation"), color = "green", width = 2,size="tiny"),
                                 br(),
                                 semantic.dashboard::box(title="Project Distribution",color="blue",
                                                         tableOutput("project_freq")),
@@ -168,6 +172,11 @@ tab_daily_summary_1.2 <- column(6,
                                 semantic.dashboard::box(title="People's Workload",color="blue",
                                                         tableOutput("people_freq"))
                                 
+)
+
+tab_dashboard_1.0 <- fluidRow(
+    
+    downloadButton("downloadData", "Download Report")
 )
 
 # Define UI for application that draws a histogram
@@ -180,7 +189,7 @@ sidebar <- dashboardSidebar(sidebarMenu(
     menuItem(tabName = "summary_2", text = "Projects' Report", icon = icon("clipboard outline")),
  #   menuItem(tabName = "project_details", text = "Project Details", icon = icon("file alternate outline")),
     menuItem(tabName = "daily_view", text = "Daily Tracker", icon = icon("calendar check outline")) ,  
- #   menuItem(tabName = "flexdashboard", text = "Download Report", icon = icon("download")),
+    menuItem(tabName = "flexdashboard", text = "Download Report", icon = icon("download")),
     menuItem(tabName = "about", text = "About", icon = icon("copyright outline icon"))
     
 ))
@@ -217,18 +226,66 @@ body <-   dashboardBody(
                 fluidRow(
                     tab_daily_summary_1.1,
                     tab_daily_summary_1.2)),
-#        tabItem("flexdashboard",
-#                tab_home_1.0),
+       tabItem("flexdashboard",
+                tab_dashboard_1.0),
         tabItem("about",
                 tab_home_1.0)
     ) 
 )
 
-ui <- dashboardPage(header,sidebar,body,theme = "cerulean")
+ui <- dashboardPage(header,sidebar,body,theme = app_vars$theme)
 
 # Define server logic required to draw a histogram
 server <- function(input, output) {
+    
+
+    
     message("Initial Load")
+    
+    observeEvent(input$date_from,
+                 {
+                     if(input$date_from==""){
+                         date_from <- as_date(cut(app_vars$today, "month"))
+                     }else
+                     {
+                         date_from <- as_date(input$date_from)
+                     }
+                     
+                     if(input$date_to==""){
+                         date_to <- as_date(cut(app_vars$today, "month") + dweeks(24))
+                     }else
+                     {
+                         date_to <- as_date(input$date_to)
+                     }
+                     
+                     rendered_data$render.roadmap <- projects_roadmap(presentation_data,app_vars,
+                                                                      date_from,
+                                                                      date_to)
+                     
+                 })
+    
+    observeEvent(input$date_to,
+                 {
+                     if(input$date_from==""){
+                         date_from <- as_date(cut(app_vars$today, "month"))
+                     }else
+                     {
+                         date_from <- as_date(input$date_from)
+                     }
+                     
+                     if(input$date_to==""){
+                         date_to <- as_date(cut(app_vars$today, "month") + dweeks(24))
+                     }else
+                     {
+                         date_to <- as_date(input$date_to)
+                     }
+                     
+                     rendered_data$render.roadmap <- projects_roadmap(presentation_data,app_vars,
+                                                                      date_from,
+                                                                      date_to)
+                     
+                 })
+    
     observeEvent(input$refresh_data,
                  {
                      message(paste("Starting Refresh"))
@@ -255,8 +312,8 @@ server <- function(input, output) {
                      saveRDS(presentation_data, file=app_vars$Pdata_file) 
                      
                     rendered_data$render.kanban = project_kanban_tables(presentation_data,app_vars)
-                     rendered_data$render.roadmap <- projects_roadmap(presentation_data,app_vars,as_date(cut(app_vars$today, "month")))
-                     rendered_data$render.projects <- projects_summary(presentation_data,app_vars)
+                    rendered_data$render.roadmap <- projects_roadmap(presentation_data,app_vars,as_date(cut(app_vars$today, "month")),
+                                                                     (as_date(cut(app_vars$today, "month"))+dweeks(24)))
                      rendered_data$render.issues <- issues_summary(presentation_data,app_vars)
                      rendered_data$render.actions <- actions_summary(presentation_data,app_vars)
                      rendered_data$render.tasks <- consolidated_tasks(presentation_data,app_vars)
@@ -274,6 +331,7 @@ server <- function(input, output) {
 
     ### Load Files
     if(file.exists(app_vars$Rdata_file)){
+        presentation_data <-readRDS(file=app_vars$Pdata_file)
         rendered_data <-readRDS(file=app_vars$Rdata_file)
         message(paste("Rendered data loaded",isolate(rendered_data$data_retrieved)))
         if(!("data_retrieved" %in% "data_retrieved")){
@@ -301,7 +359,8 @@ server <- function(input, output) {
             rendered_data$data_retrieved <- now()
             
             rendered_data$render.kanban = project_kanban_tables(presentation_data,app_vars)
-            rendered_data$render.roadmap <- projects_roadmap(presentation_data,app_vars,as_date(cut(app_vars$today, "month")))
+            rendered_data$render.roadmap <- projects_roadmap(presentation_data,app_vars,as_date(cut(app_vars$today, "month")),
+                                                             (as_date(cut(app_vars$today, "month"))+dweeks(24)))
             rendered_data$render.projects <- projects_summary(presentation_data,app_vars)
             rendered_data$render.issues <- issues_summary(presentation_data,app_vars)
             rendered_data$render.actions <- actions_summary(presentation_data,app_vars)
@@ -319,6 +378,7 @@ server <- function(input, output) {
         
         
     
+        
         }else{
             source("./r/trello.R", echo = F, prompt.echo = "", spaced = F)
             source("./r/eval.R", echo = F, prompt.echo = "", spaced = F)
@@ -334,7 +394,8 @@ server <- function(input, output) {
             rendered_data$data_retrieved <- now()
             
             rendered_data$render.kanban = project_kanban_tables(presentation_data,app_vars)
-            rendered_data$render.roadmap <- projects_roadmap(presentation_data,app_vars,as_date(cut(app_vars$today, "month")))
+            rendered_data$render.roadmap <- projects_roadmap(presentation_data,app_vars,as_date(cut(app_vars$today, "month")),
+                                                             (as_date(cut(app_vars$today, "month"))+dweeks(24)))
             rendered_data$render.projects <- projects_summary(presentation_data,app_vars)
             rendered_data$render.issues <- issues_summary(presentation_data,app_vars)
             rendered_data$render.actions <- actions_summary(presentation_data,app_vars)
@@ -467,10 +528,8 @@ server <- function(input, output) {
     } 
     
     output$actions_summary <- function(){
-        rendered_data$render.issues
+        rendered_data$render.actions
     } 
-    
-    
     
     
     output$consolidated_tasks <- renderText ({
@@ -503,7 +562,30 @@ output$update_msg <- renderText ({
 
 
 
+output$date_range <- renderUI({
+    tagList(
+        tags$div(tags$div(HTML("From")),
+                 date_input("date_from", value = as_date(cut(app_vars$today, "month")) , style = "width: 30%;")),
+        tags$div(tags$div(HTML("To")),
+                 date_input("date_to", value = as_date(cut(app_vars$today, "month"))+dweeks(24), style = "width: 30%;"))
+    )
+})
 
+
+output$downloadData <- downloadHandler(
+    filename = function() {
+        paste("FlexDashboard", Sys.Date(),".html", sep = "")
+    },
+    content = function(file) {
+       outfile <- rmarkdown::render(app_vars$ReportFlex,
+                                    output_format = flexdashboard::flex_dashboard(theme = app_vars$theme,
+                                                                                  orientation="rows",
+                                                                                  social="menu",
+                                                                                  source_code="embed"))
+       file.rename(outfile, file)
+    },
+
+)
 
 
 message("Initial Load Complete")

@@ -1,0 +1,142 @@
+---
+title: "Project's Report"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: rows
+    social: menu
+    source_code: embed
+    theme: cerulean
+---
+
+```{r setup, include=FALSE}
+
+library(tidyverse)
+library(knitr)
+library(kableExtra)
+library(vistime)
+library(lubridate)
+library(plotly)
+library(flexdashboard)
+
+
+
+
+app_vars<-readRDS(file="./files/vars.rds")
+source("./r/render.R", echo = F, prompt.echo = "", spaced = F)
+
+rendered_data <-readRDS(file=app_vars$Rdata_file)
+presentation_data <-readRDS(file=app_vars$Pdata_file)
+
+```
+
+
+Generated on `r now()`
+
+Start Page
+=======================================================================
+
+```{r}
+flexdashboard::valueBox(42, caption = "Errors",icon="fa-comments",color="red")
+```
+
+
+Synoptic View
+=======================================================================
+
+```{r}
+flexdashboard::valueBox(42, caption = "Errors",icon="fa-comments",color="red")
+```
+
+
+
+Row {data-height=80%}
+-----------------------------------------------------------------------
+
+
+### Backlog
+
+```{r}
+
+shiny::isolate(rendered_data$render.kanban$project_list_backlog)   %>%
+  row_spec(1:shiny::isolate(rendered_data$render.kanban$row_values), extra_css = "border-bottom: 1px solid white")
+
+```
+
+
+
+### Planning
+
+```{r}
+
+shiny::isolate(rendered_data$render.kanban$project_list_planning)   %>%
+  row_spec(1:shiny::isolate(rendered_data$render.kanban$row_values), extra_css = "border-bottom: 1px solid white")
+
+```
+
+
+
+
+### In Progress
+
+```{r}
+shiny::isolate(rendered_data$render.kanban$project_list_active)    %>%
+  row_spec(1:shiny::isolate(rendered_data$render.kanban$row_values), extra_css = "border-bottom: 1px solid white")
+```
+
+
+
+
+### Complete
+
+```{r}
+shiny::isolate(rendered_data$render.kanban$project_list_complete)   %>%
+  row_spec(1:shiny::isolate(rendered_data$render.kanban$row_values), extra_css = "border-bottom: 1px solid white")
+
+```
+
+
+
+Roadmap
+=======================================================================
+
+
+```{r}
+print("Hello World")
+```
+
+
+
+```{r}
+ shiny::isolate(rendered_data$render.roadmap)
+
+```
+
+
+Projects' Summaries
+=======================================================================
+
+
+```{r}
+shiny::isolate(rendered_data$render.projects)
+```
+
+
+Issues
+=======================================================================
+
+
+```{r}
+shiny::isolate(rendered_data$render.issues)
+```
+
+
+Actions
+=======================================================================
+
+
+```{r}
+shiny::isolate(rendered_data$render.actions)
+```
+
+
+
