@@ -321,7 +321,11 @@ trello_normalise <-function(trello,programme_board,tasks_states){
     mutate(labels = gsub(x = labels, pattern = "red", replacement = "")) %>%
     mutate(labels = gsub(x = labels, pattern = " ", replacement = "")) %>%
     mutate(labels = if_else(nchar(labels)==0,"ungrouped",labels)) %>% mutate(due=as_date(due),dateLastActivity=as_date(dateLastActivity)) %>%
-    select(Task=name,due,State,Group=labels,Project_Name,assignee,id,Project_id=idBoard,url=shortUrl,dateLastActivity)
+    mutate(Number=ifelse(grepl("^([0-9]){1,}\\.([0-9]){1,}",name),
+                         str_extract(name, "^([0-9]){1,}\\.([0-9]){1,}"),
+                         1),
+           name=gsub("^([0-9]){1,}\\.([0-9]){1,}","",name)) %>%
+    select(Number,Task=name,due,State,Group=labels,Project_Name,assignee,id,Project_id=idBoard,url=shortUrl,dateLastActivity)
   
   
 #  rm(tasks_states)

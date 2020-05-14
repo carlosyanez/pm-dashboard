@@ -174,6 +174,8 @@ tab_daily_summary_1.2 <- column(6,
                                 
 )
 
+tab_pdetails_1.0 <- fluidRow(h1(textOutput("project.project_name")))
+
 tab_dashboard_1.0 <- fluidRow(
     
     downloadButton("downloadData", "Download Report")
@@ -187,7 +189,7 @@ sidebar <- dashboardSidebar(sidebarMenu(
     menuItem(tabName = "home", text = "Home", icon = icon("home")),
     menuItem(tabName = "summary_1", text = "Projects' Synoptic", icon = icon("compass")) ,
     menuItem(tabName = "summary_2", text = "Projects' Report", icon = icon("clipboard outline")),
- #   menuItem(tabName = "project_details", text = "Project Details", icon = icon("file alternate outline")),
+    menuItem(tabName = "project_details", text = "Project Details", icon = icon("file alternate outline")),
     menuItem(tabName = "daily_view", text = "Daily Tracker", icon = icon("calendar check outline")) ,  
     menuItem(tabName = "flexdashboard", text = "Download Report", icon = icon("download")),
     menuItem(tabName = "about", text = "About", icon = icon("copyright outline icon"))
@@ -219,8 +221,8 @@ body <-   dashboardBody(
                 tab_summary_2.6,
                 tab_summary_2.7,
                 tab_summary_2.8),
-#        tabItem("project_details",
-#                tab_home_1.0),
+        tabItem("project_details",
+                tab_pdetails_1.0),
         tabItem("daily_view",
                 tab_daily_summary_1.0,
                 fluidRow(
@@ -311,18 +313,20 @@ server <- function(input, output) {
                      saveRDS(normalised_data, file=app_vars$Ndata_file) 
                      saveRDS(presentation_data, file=app_vars$Pdata_file) 
                      
-                    rendered_data$render.kanban = project_kanban_tables(presentation_data,app_vars)
-                    rendered_data$render.roadmap <- projects_roadmap(presentation_data,app_vars,as_date(cut(app_vars$today, "month")),
+                     rendered_data$render.kanban <- project_kanban_tables(presentation_data,app_vars)
+                     rendered_data$render.roadmap <- projects_roadmap(presentation_data,app_vars,as_date(cut(app_vars$today, "month")),
                                                                      (as_date(cut(app_vars$today, "month"))+dweeks(24)))
+                     rendered_data$render.projects <- projects_summary(presentation_data,app_vars)
                      rendered_data$render.issues <- issues_summary(presentation_data,app_vars)
                      rendered_data$render.actions <- actions_summary(presentation_data,app_vars)
-                     rendered_data$render.tasks <- consolidated_tasks(presentation_data,app_vars)
+                     rendered_data$render.tasks  <- consolidated_tasks(presentation_data,app_vars)
                      rendered_data$render.people_freq <- people_freq(presentation_data,app_vars)
                      rendered_data$render.project_freq <- project_freq(presentation_data,app_vars)
                      rendered_data$render.stats_summary1 <- stats_summary1(presentation_data)
                      rendered_data$render.stats_summary2 <- stats_summary2(presentation_data)
                      rendered_data$render.stats_daily <- stats_daily(presentation_data)
                      rendered_data$render.update_msg <- last_update_date(rendered_data)
+                     rendered_data$render.project_data <- project_data(presentation_data)
 
                      saveRDS(rendered_data, file=app_vars$Rdata_file)  
                      
@@ -371,6 +375,7 @@ server <- function(input, output) {
             rendered_data$render.stats_summary2 <- stats_summary2(presentation_data)
             rendered_data$render.stats_daily <- stats_daily(presentation_data)
             rendered_data$render.update_msg <- last_update_date(rendered_data)
+            rendered_data$render.project_data <- project_data(presentation_data)
             
 
             saveRDS(rendered_data, file=app_vars$Rdata_file) 
@@ -406,6 +411,7 @@ server <- function(input, output) {
             rendered_data$render.stats_summary2 <- stats_summary2(presentation_data)
             rendered_data$render.stats_daily <- stats_daily(presentation_data)
             rendered_data$render.update_msg <- last_update_date(rendered_data)
+            rendered_data$render.project_data <- project_data(presentation_data)
             
             
             saveRDS(rendered_data, file=app_vars$Rdata_file) 
@@ -560,6 +566,9 @@ output$update_msg <- renderText ({
     rendered_data$render.update_msg
 })
 
+output$project.project_name <- renderText ({
+    rendered_data$render.project_data[1,]$Project
+})
 
 
 output$date_range <- renderUI({
@@ -580,8 +589,8 @@ output$downloadData <- downloadHandler(
        outfile <- rmarkdown::render(app_vars$ReportFlex,
                                     output_format = flexdashboard::flex_dashboard(theme = app_vars$theme,
                                                                                   orientation="rows",
-                                                                                  social="menu",
-                                                                                  source_code="embed"))
+                                                                                  social="menu"
+                                                                                  ))
        file.rename(outfile, file)
     },
 

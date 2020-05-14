@@ -4,7 +4,7 @@ output:
   flexdashboard::flex_dashboard:
     orientation: rows
     social: menu
-    source_code: embed
+ #   source_code: embed
     theme: cerulean
 ---
 
@@ -25,29 +25,100 @@ app_vars<-readRDS(file="./files/vars.rds")
 source("./r/render.R", echo = F, prompt.echo = "", spaced = F)
 
 rendered_data <-readRDS(file=app_vars$Rdata_file)
-presentation_data <-readRDS(file=app_vars$Pdata_file)
 
 ```
-
-
-Generated on `r now()`
 
 Start Page
 =======================================================================
 
+Row {data-height=5%}
+-----------------------------------------------------------------------
+
 ```{r}
-flexdashboard::valueBox(42, caption = "Errors",icon="fa-comments",color="red")
+tibble(value=c("Project Management Report")) %>%
+  kable(format = "html", escape = F,col.names = NULL,booktabs = T) %>%
+      kable_styling(full_width = F) %>% 
+  row_spec(1,bold = T,font_size = 20)
 ```
 
 
-Synoptic View
+Row {data-height=20%}
+-----------------------------------------------------------------------
+
+```{r}
+now_value <- paste(paste(day(now())," ",
+            month(now(),label=TRUE), " ",
+            year(now())," -- ",
+            ifelse(hour(now())<10,paste("0",hour(now()),sep=""),hour(now())),
+            ":",                                               
+            ifelse(minute(now())<10,paste("0",minute(now()),sep=""),minute(now())),sep=""),sep=" ")
+
+datevalue <- shiny::isolate(rendered_data$data_retrieved)
+
+datevalue2 <-  paste(paste(day(datevalue)," ",
+                                   month(datevalue,label=TRUE), " ",
+                                   year(datevalue)," -- ",
+                                   ifelse(hour(datevalue)<10,paste("0",hour(datevalue),sep=""),hour(datevalue)),
+                                   ":",                                               
+                              ifelse(minute(datevalue)<10,paste("0",minute(datevalue),sep=""),minute(datevalue)),sep=""),sep=" ")
+
+tibble(description=c("Report Created on:","Data Retrieved on:"),
+       value=c(now_value,datevalue2)) %>%
+  kable(format = "html", escape = F,col.names = NULL,booktabs = T) %>%
+      kable_styling(full_width = F) 
+```
+
+Row {data-height=30%}
+-----------------------------------------------------------------------
+
+```{r}
+
+tibble(Backlog=c(cell_spec("Backlog",align = "center"),
+                 cell_spec(s.backlog<-shiny::isolate(rendered_data$render.stats_summary1$Backlog),align="right",bold=T)),
+       Planning=c(cell_spec("Planning",align = "center"),
+                 cell_spec(s.backlog<-shiny::isolate(rendered_data$render.stats_summary1$Planning),align="right",bold=T)),
+       Progress=c(cell_spec("In Progress",align = "center"),
+                 cell_spec(s.backlog<-shiny::isolate(rendered_data$render.stats_summary1$InProgress),align="right",bold=T)),
+       Complete=c(cell_spec("Complete",align = "center"),
+                 cell_spec(s.backlog<-shiny::isolate(rendered_data$render.stats_summary1$Complete),align="right",bold=T)),
+       Space =c("", "") ,
+       R=c(cell_spec("R",align = "center"),
+                 cell_spec(s.backlog<-shiny::isolate(rendered_data$render.stats_summary1$R),align="right",bold=T)),
+       A=c(cell_spec("A",align = "center"),
+                 cell_spec(s.backlog<-shiny::isolate(rendered_data$render.stats_summary1$A),align="right",bold=T)),
+       G=c(cell_spec("G",align = "center"),
+                 cell_spec(s.backlog<-shiny::isolate(rendered_data$render.stats_summary1$G),align="right",bold=T)),
+       
+) %>%
+      
+        kable(format = "html", escape = F,booktabs = T,col.names = NULL) %>%
+      kable_styling(full_width = F) %>%
+  column_spec(1,width_min="7em",background = app_vars$project_kanban_background[which(app_vars$project_kanban_background$State=="Backlog"),]$hex,
+              color=app_vars$t.default_colour ) %>%
+  column_spec(2,width_min="7em",background = app_vars$project_kanban_background[which(app_vars$project_kanban_background$State=="Planning"),]$hex,
+              color=app_vars$t.default_colour) %>%
+  column_spec(3,width_min="7em",background = app_vars$project_kanban_background[which(app_vars$project_kanban_background$State=="In Progress"),]$hex,
+              color=app_vars$t.default_colour) %>%
+  column_spec(4,width_min="7em",background = app_vars$project_kanban_background[which(app_vars$project_kanban_background$State=="Complete"),]$hex,
+              color=app_vars$t.default_colour ) %>%
+    column_spec(6,width_min="7em",background = app_vars$status_colours[which(app_vars$status_colours$colour_short=="R"),]$hex,
+              color="white" ) %>%
+    column_spec(7,width_min="7em",background = app_vars$status_colours[which(app_vars$status_colours$colour_short=="A"),]$hex,
+              color="white") %>%
+    column_spec(8,width_min="7em",background = app_vars$status_colours[which(app_vars$status_colours$colour_short=="G"),]$hex,
+              color="white") 
+```
+
+Row {data-height=30%}
+-----------------------------------------------------------------------
+
+```{r}
+
+```
+
+
+Kanban
 =======================================================================
-
-```{r}
-flexdashboard::valueBox(42, caption = "Errors",icon="fa-comments",color="red")
-```
-
-
 
 Row {data-height=80%}
 -----------------------------------------------------------------------
@@ -118,6 +189,7 @@ Projects' Summaries
 
 ```{r}
 shiny::isolate(rendered_data$render.projects)
+normalised_data$tasks
 ```
 
 

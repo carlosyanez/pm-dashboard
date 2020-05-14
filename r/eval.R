@@ -110,6 +110,9 @@ eval_tasks <- function(normalised_data,
   
   tasks <- tasks %>%
     mutate(t.RAG=cell_spec(RAG,color=RAG_colour,background = RAG_colour,tooltip=RAG_comment),
+           t.Number=cell_spec(Number,link=url,
+                              color=ifelse(State=="Complete",State_colour,app_vars$t.default_colour),
+                              tooltip="Click to see source"),
            t.Task=cell_spec(Task,link=url,
                             color=ifelse(State=="Complete",State_colour,app_vars$t.default_colour),
                             tooltip="Click to see source"),
@@ -373,14 +376,24 @@ eval_projects <- function(normalised_data,
     group_by(card_id,date) %>% 
     mutate(comment = paste0(comment, collapse = ", ")) %>%
     ungroup() %>%
-    unique(.) %>% mutate(comment = paste(date, comment, sep = ": ")) %>%
-    select(id=card_id,comment,comment_updated=date)
+    unique(.) %>%
+    mutate(Done_flag=grepl("\\{Done\\}:",comment),
+           mkr1 = ifelse(Done_flag,str_locate(comment,"\\{Done\\}:"),0),
+           mkr2 =ifelse(Done_flag,str_locate(comment,"\\{To Do\\}:"),0),
+           mkr3 =ifelse(Done_flag,str_length(comment),0),
+           Done =ifelse(Done_flag,
+                        str_sub(comment,start=mkr1+9,end=mkr2-1),
+                        comment),
+           ToDo = ifelse(Done_flag,
+                         str_sub(comment,start=mkr2+10,end=mkr3),
+                         "")) %>% 
+    select(id=card_id,comment,comment_updated=date,Done,ToDo)
   
   
   
   projects <- 
     normalised_data$projects %>% 
-    left_join((latest_comment %>% select(updates_id=id,Updates=comment,comment_updated)), by="updates_id") %>%
+    left_join((latest_comment %>% select(updates_id=id,Done,ToDo,Updates=comment,comment_updated)), by="updates_id") %>%
     left_join(task_metrics,by="Project_id") %>%
     left_join(action_metrics,by="Project_id") %>%
     left_join(issue_metrics,by="Project_id") %>%
@@ -550,7 +563,22 @@ eval_projects <- function(normalised_data,
            t.Project_Lead = cell_spec(Project_Lead,color=ifelse(eval,State_colour,app_vars$t.default_colour)),
            t.Project_Manager = cell_spec(Project_Manager,color=ifelse(eval,State_colour,app_vars$t.default_colour)),
            t.State = cell_spec(State,color="white",background=State_colour,tooltip=Updates),
-           t.Update=cell_spec(Updates,color=ifelse(eval,State_colour,app_vars$t.default_colour),align="left"),
+           t.UpdateDate=cell_spec(ifelse(is.na(strftime(comment_updated)),
+                                         NA,
+                                         paste(day(comment_updated),month(comment_updated, label=TRUE))),color= ifelse(eval,State_colour,
+                                                                                                   ifelse(metric_start_minus_today>0,
+                                                                                                          (app_vars$status_colours %>%
+                                                                                                             filter(colour_short=="R") %>% 
+                                                                                                             pull(hex)),
+                                                                                                          ifelse(metric_start_minus_today>-1,
+                                                                                                                 (app_vars$status_colours %>%
+                                                                                                                    filter(colour_short=="A") %>% 
+                                                                                                                    pull(hex)),
+                                                                                                                 app_vars$t.default_colour)))),
+             
+             
+           t.Done=cell_spec(Done,color=ifelse(eval,State_colour,app_vars$t.default_colour),align="left"),
+           t.ToDo=cell_spec(ToDo,color=ifelse(eval,State_colour,app_vars$t.default_colour),align="left"),
            t.start = cell_spec(ifelse(is.na(strftime(start)),
                                       NA,
                                       paste(day(start),month(start, label=TRUE))),color= ifelse(eval,State_colour,
@@ -630,11 +658,15 @@ eval_consolidated_items <- function(presentation_data){
                                              t.due=t.end),
                                     presentation_data$actions %>% mutate(Type="Action") %>%
                                       select(Type,Project,Item=action,State,assignee,
-                                             due,RAG,t.RAG,t.Item=t.Action,t.assignee,
+                                             due,RAG,t.RAG,
+                                             t.Project=Project,
+                                             t.Item=t.Action,t.assignee,
                                              t.State,t.due),
                                     presentation_data$issues %>% mutate(Type="Issue") %>%
                                       select(Type,Project,Item=Title,State,assignee=Assignee,
-                                             due,RAG,t.RAG,t.Item=t.Title,
+                                             due,RAG,t.RAG,
+                                             t.Project=Project,
+                                             t.Item=t.Title,
                                              t.assignee=t.Assignee,
                                              t.State,t.due))
   
@@ -704,6 +736,9 @@ presentation_data$programme_stats <- eval_stats(presentation_data)
 presentation_data$t.consolidated_tasks <- eval_consolidated_items(presentation_data)
 
 presentation_data$consolidated_stats <- eval_items_stats(presentation_data$t.consolidated_tasks)
+
+
+app_vars$default_project <- presentation_data$projects[1,]$Name
 
 message("Data Evaluated")
 
