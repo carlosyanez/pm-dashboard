@@ -189,7 +189,6 @@ Projects' Summaries
 
 ```{r}
 shiny::isolate(rendered_data$render.projects)
-normalised_data$tasks
 ```
 
 
