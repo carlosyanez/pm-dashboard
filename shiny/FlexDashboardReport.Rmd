@@ -42,25 +42,25 @@ tibble(value=c("Project Management Report")) %>%
 ```
 
 
-Row {data-height=20%}
+Row {data-height=10%}
 -----------------------------------------------------------------------
 
 ```{r}
-now_value <- paste(paste(day(now())," ",
-            month(now(),label=TRUE), " ",
-            year(now())," -- ",
-            ifelse(hour(now())<10,paste("0",hour(now()),sep=""),hour(now())),
+now_value <- paste(paste(lubridate::day(lubridate::now())," ",
+            lubridate::month(lubridate::now(),label=TRUE), " ",
+            lubridate::year(lubridate::now())," -- ",
+            ifelse(lubridate::hour(lubridate::now())<10,paste("0",lubridate::hour(lubridate::now()),sep=""),lubridate::hour(lubridate::now())),
             ":",                                               
-            ifelse(minute(now())<10,paste("0",minute(now()),sep=""),minute(now())),sep=""),sep=" ")
+            ifelse(lubridate::minute(lubridate::now())<10,paste("0",lubridate::minute(lubridate::now()),sep=""),lubridate::minute(lubridate::now())),sep=""),sep=" ")
 
 datevalue <- shiny::isolate(rendered_data$data_retrieved)
 
-datevalue2 <-  paste(paste(day(datevalue)," ",
-                                   month(datevalue,label=TRUE), " ",
-                                   year(datevalue)," -- ",
-                                   ifelse(hour(datevalue)<10,paste("0",hour(datevalue),sep=""),hour(datevalue)),
+datevalue2 <-  paste(paste(lubridate::day(datevalue)," ",
+                                   lubridate::month(datevalue,label=TRUE), " ",
+                                   lubridate::year(datevalue)," -- ",
+                                   ifelse(lubridate::hour(datevalue)<10,paste("0",lubridate::hour(datevalue),sep=""),lubridate::hour(datevalue)),
                                    ":",                                               
-                              ifelse(minute(datevalue)<10,paste("0",minute(datevalue),sep=""),minute(datevalue)),sep=""),sep=" ")
+                              ifelse(lubridate::minute(datevalue)<10,paste("0",lubridate::minute(datevalue),sep=""),lubridate::minute(datevalue)),sep=""),sep=" ")
 
 tibble(description=c("Report Created on:","Data Retrieved on:"),
        value=c(now_value,datevalue2)) %>%
@@ -68,7 +68,9 @@ tibble(description=c("Report Created on:","Data Retrieved on:"),
       kable_styling(full_width = F) 
 ```
 
-Row {data-height=30%}
+
+
+Row {data-height=10%}
 -----------------------------------------------------------------------
 
 ```{r}
@@ -109,11 +111,39 @@ tibble(Backlog=c(cell_spec("Backlog",align = "center"),
               color="white") 
 ```
 
-Row {data-height=30%}
+
+
+Row {data-height=10%}
 -----------------------------------------------------------------------
 
 ```{r}
-
+tibble(LateStart=c(cell_spec("Late Start",align = "center"),
+                 cell_spec(s.backlog<-shiny::isolate(rendered_data$render.stats_summary2$late.start),align="right",bold=T)),
+       Overdue=c(cell_spec("Overdue",align = "center"),
+                 cell_spec(s.backlog<-shiny::isolate(rendered_data$render.stats_summary2$overdue),align="right",bold=T)),
+        LateTasks=c(cell_spec("Late Tasks",align = "center"),
+                 cell_spec(s.backlog<-shiny::isolate(rendered_data$render.stats_summary2$late.tasks),align="right",bold=T)),
+        IssuesR=c(cell_spec("Issues - R",align = "center"),
+                 cell_spec(s.backlog<-shiny::isolate(rendered_data$render.stats_summary2$issue.R),align="right",bold=T)),
+        IssuesA=c(cell_spec("Issues - A",align = "center"),
+                 cell_spec(s.backlog<-shiny::isolate(rendered_data$render.stats_summary2$issue.A),align="right",bold=T)),
+        OpenActions=c(cell_spec("Open Actions",align = "center"),
+                 cell_spec(s.backlog<-shiny::isolate(rendered_data$render.stats_summary2$open.actions),align="right",bold=T))
+) %>% 
+  kable(format = "html", escape = F,booktabs = T,col.names = NULL) %>%
+      kable_styling(full_width = F) %>%
+  column_spec(1,width_min="7em",background = app_vars$status_colours[which(app_vars$status_colours$colour_short=="NA"),]$hex,
+              color="white" ) %>%
+  column_spec(2,width_min="7em",background = app_vars$status_colours[which(app_vars$status_colours$colour_short=="NA"),]$hex,
+              color="white"  ) %>%
+  column_spec(3,width_min="7em",background = app_vars$status_colours[which(app_vars$status_colours$colour_short=="NA"),]$hex,
+              color="white"  ) %>%
+  column_spec(4,width_min="7em",background = app_vars$status_colours[which(app_vars$status_colours$colour_short=="R"),]$hex,
+              color="white") %>%
+  column_spec(5,width_min="7em",background = app_vars$status_colours[which(app_vars$status_colours$colour_short=="A"),]$hex,
+              color="white"  ) %>%
+  column_spec(6,width_min="7em",background = app_vars$status_colours[which(app_vars$status_colours$colour_short=="NA"),]$hex,
+              color="white"  ) 
 ```
 
 
@@ -169,12 +199,6 @@ shiny::isolate(rendered_data$render.kanban$project_list_complete)   %>%
 
 Roadmap
 =======================================================================
-
-
-```{r}
-print("Hello World")
-```
-
 
 
 ```{r}

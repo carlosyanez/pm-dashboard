@@ -119,3 +119,11 @@ files/vars.rds
 files/rendered_data.rds
 files/presentation_data.rds
 files/normalised_data.rds
+shiny/files/normalised_data.rds
+shiny/files/presentation_data.rds
+shiny/files/rendered_data.rds
+shiny/files/vars.rds
+Untitled.Rmd
+shiny/files/.DS_Store
+shiny/.DS_Store
+.DS_Store
