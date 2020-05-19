@@ -44,9 +44,10 @@ RUN R -e "install.packages('flexdashboard')"
 RUN R -e "install.packages('pins')"
 RUN R -e "install.packages('tinytex')"
 RUN R -e "tinytex::install_tinytex()"
+RUN R -e "install.packages('revealjs', type = 'source')"
 
 # select port
-EXPOSE 80 443
+#EXPOSE 80 443
 
 # allow permission
 RUN sudo chown -R shiny:shiny /srv/shiny-server
