@@ -13,6 +13,16 @@ RUN apt-get update && apt-get install -y \
     libssh2-1-dev  \
     nginx \
     apache2-utils 
+    
+
+###Useful but not used   
+#RUN apt-get install -y unixodbc unixodbc-dev --install-suggests
+
+#RUN apt-get install -y tdsodbc \
+#     odbc-postgresql \
+#     libmyodbc \
+#     libsqliteodbc
+  
  
 
 #Generate certificate
@@ -37,21 +47,28 @@ RUN R -e "install.packages('lubridate')"
 RUN R -e "install.packages('plotly')"
 RUN R -e "install.packages('trelloR')"
 RUN R -e "install.packages('tempR')"
-RUN R -e "install.packages('shinyWidgets')"
 RUN R -e "install.packages('plumber')"
-RUN R -e "install.packages('leaflet')"
 RUN R -e "install.packages('flexdashboard')"
 RUN R -e "install.packages('pins')"
 RUN R -e "install.packages('tinytex')"
-RUN R -e "tinytex::install_tinytex()"
-RUN R -e "install.packages('revealjs', type = 'source')"
+
+
+
+###Useful but not used   
+# RUN R -e "install.packages('shinyWidgets')"
+# RUN R -e "install.packages('leaflet')"
+# RUN R -e "tinytex::install_tinytex()"
+# RUN R -e "install.packages('revealjs', type = 'source')"
+# RUN R -e "install.packages('rclipboard')"
+# RUN R -e "install.packages('DBI')"
+
 
 # select port
 #EXPOSE 80 443
 
 # allow permission
 RUN sudo chown -R shiny:shiny /srv/shiny-server
-RUN sudo chmod -R 777 /tmp
+
 
 COPY shiny-server.sh /usr/bin/shiny-server.sh
 

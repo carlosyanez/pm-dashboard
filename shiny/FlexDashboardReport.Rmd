@@ -21,7 +21,7 @@ library(flexdashboard)
 
 
 
-app_vars<-readRDS(file="./files/vars.rds")
+app_vars<-readRDS(file="./files/app_vars.rds")
 source("./r/render.R", echo = F, prompt.echo = "", spaced = F)
 
 rendered_data <-readRDS(file=app_vars$Rdata_file)
