@@ -354,7 +354,9 @@ body <-   semantic.dashboard::dashboardBody(
                tab_dashboard_1.4,
                tab_dashboard_1.5),
         tabItem("about",
-                includeMarkdown("about.md"))
+                column(8,
+                       includeMarkdown("about.md")
+                ))
     )
 )
 
