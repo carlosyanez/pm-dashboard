@@ -242,8 +242,16 @@ tab_pdetails_1.6 <- fluidRow(#tasks
 
 tab_dashboard_1.0 <- fluidRow(
   h1("Reports")
+  )
+
+tab_dashboard_1.0.5 <- fluidRow(
+  if(app_vars$source_system=="Demo"){
+    HTML(paste('Not functional in Demo mode. Download Sample Report  <a href="',
+                                                app_vars$demo_flexreport,
+                                                '"> here </a>',sep=""))
+    }else{''}
   
- )
+)
 
 tab_dashboard_1.1 <- fluidRow(
                         column(4,h4("Download Snapshot :::")), 
@@ -339,6 +347,7 @@ body <-   semantic.dashboard::dashboardBody(
                     tab_daily_summary_1.2)),
        tabItem("flexdashboard",
                 tab_dashboard_1.0,
+               tab_dashboard_1.0.5,
                 tab_dashboard_1.1,
                tab_dashboard_1.2,
                tab_dashboard_1.3,
@@ -504,45 +513,48 @@ if(app_vars$source_system=="Demo"){
     ##Save report version
     observeEvent(input$save_version,
                  {
-                   ts_value <- as.numeric(normalised_data$data_retrieved <- if(app_vars$source_system=="Demo"){app_vars$demo_now}else{lubridate::now()})
-                   snapshots_version <- add_row(snapshots_version,
+                   if(!(app_vars$source_system=="Demo")){
+                         ts_value <- as.numeric(normalised_data$data_retrieved <- if(app_vars$source_system=="Demo"){app_vars$demo_now}else{lubridate::now()})
+                         snapshots_version <- add_row(snapshots_version,
                                                 version=isolate(input$version_name),timestamp=ts_value)
-                   saveRDS(snapshots_version, file=app_vars$Vdata_file) 
-                   updateSelectInput(session, "report_selection",
+                          saveRDS(snapshots_version, file=app_vars$Vdata_file) 
+                          updateSelectInput(session, "report_selection",
                                      choices =  snapshots_version %>% pull(version))
                    
-                   v_RData <- paste("./files/rendered_data_",ts_value,".rds",sep="")
-                   v_PData <- paste("./files/presentation_data_",ts_value,".rds",sep="")
-                   v_FlexName <- paste(app_vars$html_loc,"FlexDashboard_",ts_value,".html", sep = "") 
+                          v_RData <- paste("./files/rendered_data_",ts_value,".rds",sep="")
+                          v_PData <- paste("./files/presentation_data_",ts_value,".rds",sep="")
+                          v_FlexName <- paste(app_vars$html_loc,"FlexDashboard_",ts_value,".html", sep = "") 
                   
-                   outfile <- rmarkdown::render(app_vars$ReportFlex,
+                          outfile <- rmarkdown::render(app_vars$ReportFlex,
                                                 output_format = flexdashboard::flex_dashboard(theme = app_vars$theme_flex,
                                                                                               orientation="rows",
                                                                                               social="menu"
                                                 ))
-                   file.copy(outfile, v_FlexName)
-                   file.remove(outfile) 
+                            file.copy(outfile, v_FlexName)
+                            file.remove(outfile) 
                    
-                   saveRDS(presentation_data, file=v_PData) 
-                   saveRDS(rendered_data, file=v_RData)
+                            saveRDS(presentation_data, file=v_PData) 
+                            saveRDS(rendered_data, file=v_RData)
                    
-                   v_FlexLoc$text <- paste(app_vars$URL,"reports/","FlexDashboard_",ts_value,".html", sep = "") 
-                   updateSelectInput(session, "report_selection",
+                            v_FlexLoc$text <- paste(app_vars$URL,"reports/","FlexDashboard_",ts_value,".html", sep = "") 
+                            updateSelectInput(session, "report_selection",
                                      choices =  snapshots_version %>% pull(version))
-                   
+                   }
                  })
     
     
     observeEvent(input$report_selection,
                  {
-                   if(length(input$report_selection)==0){
-                     version_value <- "current"
-                   }else{
-                     version_value <- input$report_selection
-                   }
+                   if(!(app_vars$source_system=="Demo")){
+                       if(length(input$report_selection)==0){
+                            version_value <- "current"
+                        }else{
+                            version_value <- input$report_selection
+                        }
                    
-                   rendered_data$render.past_report<- past_reports(version_parameter=version_value,
-                                                                   app_vars,snapshots_version)    
+                    rendered_data$render.past_report<- past_reports(version_parameter=version_value,
+                                                                   app_vars,snapshots_version) 
+                   }
                    
                  })
     
@@ -925,11 +937,8 @@ output$past_report <- function(){
 }
 
 
-
-
-
-
 output$date_range <- renderUI({
+  
     tagList(
         tags$div(tags$div(HTML("From")),
                  date_input("date_from", value = lubridate::as_date(cut(app_vars$today, "month")) , style = "width: 30%;")),
@@ -943,16 +952,28 @@ output$date_range <- renderUI({
 
 output$downloadData <- downloadHandler(
     filename = function() {
+      if(app_vars$source_system=="Demo"){
         paste("FlexDashboard_",as.numeric(normalised_data$data_retrieved <- if(app_vars$source_system=="Demo"){app_vars$demo_now}else{lubridate::now()}),".html", sep = "")
-    },
+      }else{
+        file <- app_vars$demo_flexreport
+      }
+     },
     content = function(file) {
-       outfile <- rmarkdown::render(app_vars$ReportFlex,
+
+      if(app_vars$source_system=="Demo"){
+        
+            file <- app_vars$demo_flexreport
+        
+      }else{
+      
+            outfile <- rmarkdown::render(app_vars$ReportFlex,
                                     output_format = flexdashboard::flex_dashboard(theme = app_vars$theme_flex,
                                                                                   orientation="rows",
                                                                                   social="menu"
                                                                                   ))
-       file.copy(outfile, file)
-       file.remove(outfile)
+            file.copy(outfile, file)
+            file.remove(outfile)
+      }
     },
 
 )
