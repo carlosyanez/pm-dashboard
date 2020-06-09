@@ -327,7 +327,7 @@ stats_daily <- function(presentation_data){
 
 last_update_date <-function(rendered_data){
  # namesvalues <- names(rendered_data)
-  datevalue <- isolate(rendered_data$data_retrieved)
+  datevalue <- shiny::isolate(rendered_data$data_retrieved)
   if(!exists("rendered_data")){
     "Never Updated"
   }else{
@@ -412,7 +412,7 @@ project_tasks <- function(presentation_data,app_vars,project_name="-1",filter_ta
 }
 
 project_plan <- function(presentation_data,project_name="-1"){
-    library(plotly)  
+  library(plotly)  
 
   if(project_name=="-1"){project_name <-presentation_data$projects[1,]$Name}
   

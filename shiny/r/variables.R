@@ -1,12 +1,10 @@
 app_vars <-vector(mode = "list", length = 0)
 
+app_vars$source_system <- "Demo"
 
-
-app_vars$source_system <- "Trello"
 app_vars$theme <- "cerulean"
-app_vars$today<-Sys.Date()
 
-app_vars$URL <- "https://localhost:84/"
+app_vars$URL <- "https://replacewithyouradress/"
 app_vars$html_loc <- "/var/www/reports/"
 
 app_vars$Ndata_file <- "./files/normalised_data.rds"
@@ -130,4 +128,15 @@ app_vars$history_call <- tibble(Name=c("Full Report","Backlog","Planning","In Pr
                                 base=c("/FlexDashboard_","/synoptic_backlog","/synoptic_planning","/synoptic_inprogress",
                                        "/synoptic_complete","/roadmap","/project_summaries","/issues",
                                        "/actions"))
+
+###for Excel Import
+app_vars$url_value <- "https://www.google.com"
+app_vars$date_last_activity <- "1970-01-01"
+app_vars$excel_files <- "./excel_files/"
+app_vars$demo_files <- "./demo_files/"
+app_vars$demo_date <- lubridate::as_date("2020-05-22")
+app_vars$demo_now <- lubridate::as_date("2020-05-22")
+
+app_vars$today<-if(app_vars$source_system=="Demo"){app_vars$demo_now}else{Sys.Date()}
+
 

@@ -51,7 +51,8 @@ RUN R -e "install.packages('plumber')"
 RUN R -e "install.packages('flexdashboard')"
 RUN R -e "install.packages('pins')"
 RUN R -e "install.packages('tinytex')"
-
+RUN R -e "install.packages('readxl')"
+RUN R -e "install.packages('ggthemes')"
 
 
 ###Useful but not used   

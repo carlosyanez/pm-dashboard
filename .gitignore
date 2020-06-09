@@ -18,5 +18,8 @@ reports/test.html
 shiny/.DS_Store
 shiny/files/.DS_Store
 shiny/files/.Rapp.history
-shiny/trello_secret.txt
 shiny/wb.Rmd
+shiny/demo_files/.DS_Store
+shiny/excel_files/~$8 - Twenty Thousand Leagues Under the Sea.xlsx
+shiny/excel_files/~$Projects.xlsx
+shiny/trello_secret_mine.txt

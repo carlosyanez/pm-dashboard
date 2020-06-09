@@ -173,7 +173,7 @@ tab_pdetails_1.0 <- fluidRow(
   )
 
 tab_pdetails_1.1 <- fluidRow(
-  column(16,
+  column(12,
   semantic.dashboard::box(title="Project",color="blue",
                          h1(htmlOutput("project.project_name")))
   )
@@ -345,7 +345,7 @@ body <-   semantic.dashboard::dashboardBody(
                tab_dashboard_1.4,
                tab_dashboard_1.5),
         tabItem("about",
-                includeHTML("about.html"))
+                includeMarkdown("about.md"))
     )
 )
 
@@ -353,14 +353,27 @@ ui <-  semantic.dashboard::dashboardPage(header,sidebar,body,theme = app_vars$th
 
 # Define server logic required to draw a histogram
 server <- function(input, output,session) {
-    
+   
+message(paste("Starting Load"))
+app_vars$today<-if(app_vars$source_system=="Demo"){app_vars$demo_now}else{Sys.Date()}
+  
+
+if(app_vars$source_system=="Demo"){
+  snapshots_version <- tibble(version=c("current"),timestamp=c(1))
+  saveRDS(snapshots_version, file=app_vars$Vdata_file) 
+ 
+  message(paste("Loaded demo history"))
+   
+}else{
    if(file.exists(app_vars$Vdata_file)){
      snapshots_version <- readRDS(file=app_vars$Vdata_file)
    }else{
      snapshots_version <- tibble(version=c("current"),timestamp=c(1))
      saveRDS(snapshots_version, file=app_vars$Vdata_file) 
    }
+}
 
+  message(paste("Continue"))
    v_FlexLoc <- reactiveValues()
    v_FlexLoc$text <- ""
 
@@ -414,8 +427,8 @@ server <- function(input, output,session) {
                  {
                      message(paste("Starting Refresh"))
                      
-                     source("./r/trello.R", echo = F, prompt.echo = "", spaced = F)
-                     normalised_data$data_retrieved <- lubridate::as_date(lubridate::now())
+                     source("./r/data_loader.R", echo = F, prompt.echo = "", spaced = F)
+                     normalised_data$data_retrieved <- lubridate::as_date(normalised_data$data_retrieved <- if(app_vars$source_system=="Demo"){app_vars$demo_now}else{lubridate::now()})
                      saveRDS(normalised_data, file=app_vars$Ndata_file) 
                      normalised_data <-readRDS(file=app_vars$Ndata_file)
 
@@ -429,8 +442,8 @@ server <- function(input, output,session) {
                      message(nrow(presentation_data$projects))
 
 
-                     presentation_data$data_retrieved <- lubridate::now()
-                     rendered_data$data_retrieved <- lubridate::now()
+                     presentation_data$data_retrieved <- normalised_data$data_retrieved <- if(app_vars$source_system=="Demo"){app_vars$demo_now}else{lubridate::now()}
+                     rendered_data$data_retrieved <- normalised_data$data_retrieved <- if(app_vars$source_system=="Demo"){app_vars$demo_now}else{lubridate::now()}
                      
                      saveRDS(normalised_data, file=app_vars$Ndata_file) 
                      saveRDS(presentation_data, file=app_vars$Pdata_file) 
@@ -491,7 +504,7 @@ server <- function(input, output,session) {
     ##Save report version
     observeEvent(input$save_version,
                  {
-                   ts_value <- as.numeric(lubridate::now())
+                   ts_value <- as.numeric(normalised_data$data_retrieved <- if(app_vars$source_system=="Demo"){app_vars$demo_now}else{lubridate::now()})
                    snapshots_version <- add_row(snapshots_version,
                                                 version=isolate(input$version_name),timestamp=ts_value)
                    saveRDS(snapshots_version, file=app_vars$Vdata_file) 
@@ -540,11 +553,11 @@ server <- function(input, output,session) {
         rendered_data <-readRDS(file=app_vars$Rdata_file)
         message(paste("Rendered data loaded",isolate(rendered_data$data_retrieved)))
         if(!("data_retrieved" %in% "data_retrieved")){
-            isolate(rendered_data$data_retrieved) <- lubridate::now() - lubridate::ddays(100000)
+            isolate(rendered_data$data_retrieved) <- normalised_data$data_retrieved <- if(app_vars$source_system=="Demo"){app_vars$demo_now}else{lubridate::now()} - lubridate::ddays(100000)
             
         }
         
-        ageing_check <- ( (isolate(rendered_data$data_retrieved) + app_vars$auto_refresh) > lubridate::as_date(lubridate::now()) )
+        ageing_check <- ( (isolate(rendered_data$data_retrieved) + app_vars$auto_refresh) > lubridate::as_date(normalised_data$data_retrieved <- if(app_vars$source_system=="Demo"){app_vars$demo_now}else{lubridate::now()}) )
         
         if(ageing_check){
             rendered_data <-readRDS(file=app_vars$Rdata_file)
@@ -559,18 +572,18 @@ server <- function(input, output,session) {
             
         }else
         {
-            source("./r/trello.R", echo = F, prompt.echo = "", spaced = F)
+            source("./r/data_loader.R", echo = F, prompt.echo = "", spaced = F)
             source("./r/eval.R", echo = F, prompt.echo = "", spaced = F)
             
             
-            normalised_data$data_retrieved <- lubridate::now()
-            presentation_data$data_retrieved <- lubridate::now()
+            normalised_data$data_retrieved <- normalised_data$data_retrieved <- if(app_vars$source_system=="Demo"){app_vars$demo_now}else{lubridate::now()}
+            presentation_data$data_retrieved <- normalised_data$data_retrieved <- if(app_vars$source_system=="Demo"){app_vars$demo_now}else{lubridate::now()}
             
             saveRDS(normalised_data, file=app_vars$Ndata_file)  
             saveRDS(presentation_data, file=app_vars$Pdata_file) 
             
             
-            rendered_data$data_retrieved <- lubridate::now()
+            rendered_data$data_retrieved <- normalised_data$data_retrieved <- if(app_vars$source_system=="Demo"){app_vars$demo_now}else{lubridate::now()}
             
             rendered_data$render.kanban = project_kanban_tables(presentation_data,app_vars)
             rendered_data$render.roadmap <- projects_roadmap(presentation_data,app_vars,lubridate::as_date(cut(app_vars$today, "month")),
@@ -610,18 +623,18 @@ server <- function(input, output,session) {
     
         
         }else{
-            source("./r/trello.R", echo = F, prompt.echo = "", spaced = F)
+            source("./r/data_loader.R", echo = F, prompt.echo = "", spaced = F)
             source("./r/eval.R", echo = F, prompt.echo = "", spaced = F)
             
             
-            normalised_data$data_retrieved <- lubridate::now()
-            presentation_data$data_retrieved <- lubridate::now()
+            normalised_data$data_retrieved <- normalised_data$data_retrieved <- if(app_vars$source_system=="Demo"){app_vars$demo_now}else{lubridate::now()}
+            presentation_data$data_retrieved <- normalised_data$data_retrieved <- if(app_vars$source_system=="Demo"){app_vars$demo_now}else{lubridate::now()}
             
             saveRDS(normalised_data, file=app_vars$Ndata_file)  
             saveRDS(presentation_data, file=app_vars$Pdata_file) 
             
             
-            rendered_data$data_retrieved <- lubridate::now()
+            rendered_data$data_retrieved <- normalised_data$data_retrieved <- if(app_vars$source_system=="Demo"){app_vars$demo_now}else{lubridate::now()}
             
             rendered_data$render.kanban = project_kanban_tables(presentation_data,app_vars)
             rendered_data$render.roadmap <- projects_roadmap(presentation_data,app_vars,lubridate::as_date(cut(app_vars$today, "month")),
@@ -812,7 +825,7 @@ output$project.project_name <- renderUI({
 
 
 output$RAG_value_box <- renderValueBox({
-    valueBox(
+    semantic.dashboard::valueBox(
         value = rendered_data$render.project_data[1,]$RAG,
         subtitle="Overall Status",
         icon = icon(rendered_data$render.project_data[1,]$icon),
@@ -930,7 +943,7 @@ output$date_range <- renderUI({
 
 output$downloadData <- downloadHandler(
     filename = function() {
-        paste("FlexDashboard_",as.numeric(lubridate::now()),".html", sep = "")
+        paste("FlexDashboard_",as.numeric(normalised_data$data_retrieved <- if(app_vars$source_system=="Demo"){app_vars$demo_now}else{lubridate::now()}),".html", sep = "")
     },
     content = function(file) {
        outfile <- rmarkdown::render(app_vars$ReportFlex,

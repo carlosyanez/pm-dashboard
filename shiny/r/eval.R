@@ -80,7 +80,7 @@ eval_tasks <- function(normalised_data,
   ####
   ### add colour options
   
-  tasks <- tasks %>% left_join(app_vars$status_colours %>% select(RAG=colour_short,RAG_colour=hex),by="RAG") %>%
+  tasks <- tasks %>% left_join((app_vars$status_colours %>% select(RAG=colour_short,RAG_colour=hex)),by="RAG") %>%
     left_join(app_vars$project_kanban_background %>% select(State=Task,State_colour=hex),by="State")
   
   
