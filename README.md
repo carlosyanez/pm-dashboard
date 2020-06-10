@@ -1,5 +1,7 @@
 
-View Demo [**here**](https://carlosyanezs.shinyapps.io/PMDashboard/)
+[**View Demo here**](https://carlosyanezs.shinyapps.io/PMDashboard/)
+
+![screenshot](./screenshot.png "Screenshot")
 
 
 Released under [Creative Commons Zero v1.0 Universal](https://github.com/carlosyanez/pm-dashboard/blob/master/LICENSE), without any support or warranties. **Use at your own risk**
