@@ -196,7 +196,7 @@ download_excel <- function(file_location,url_value,date_last_activity){
            Project_Manager=ifelse(is.na(.$"Project Manager"),PM,.$"Project Manager"),
            Parameters ="",
            labels="",
-           url=url_value,
+           url=Link,
            due=lubridate::as_date(End,tz = NULL)) %>%
     select(Name="Project Name",State=State,labels,
            due=due,id=No,

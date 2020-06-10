@@ -27,3 +27,4 @@ shiny/files/*.rds
 reports/.DS_Store
 shiny/rsconnect/shinyapps.io/carlosyanezs/PMDashboard.dcf
 .DS_Store
+shiny/demo_files/~$Projects.xlsx
