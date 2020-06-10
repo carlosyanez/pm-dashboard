@@ -21,7 +21,7 @@ tab_home_1.2 <- fluidRow(textOutput("update_msg"))
 tab_home_1.3 <- fluidRow(actionButton("refresh_data", "Refresh Data"))
 
 tab_summary_1.0 <-fluidRow(
-    h1("Programme's Synoptic View")
+    h1("Synoptic View")
 )
 tab_summary_1.1 <-fluidRow(
     semantic.dashboard::valueBox("Backlog", textOutput("summary1.Backlog"), icon("hourglass outline"), color = "blue", width = 2,size="tiny"),
@@ -571,7 +571,7 @@ if(app_vars$source_system=="Demo"){
             
         }
         
-        ageing_check <- ( (isolate(rendered_data$data_retrieved) + app_vars$auto_refresh) > lubridate::as_date(normalised_data$data_retrieved <- if(app_vars$source_system=="Demo"){app_vars$demo_now}else{lubridate::now()}) )
+        ageing_check <- ( (isolate(rendered_data$data_retrieved) + app_vars$auto_refresh) > lubridate::as_date(if(app_vars$source_system=="Demo"){app_vars$demo_now}else{lubridate::now()}) )
         
         if(ageing_check){
             rendered_data <-readRDS(file=app_vars$Rdata_file)

@@ -134,8 +134,8 @@ app_vars$url_value <- "https://www.google.com"
 app_vars$date_last_activity <- "1970-01-01"
 app_vars$excel_files <- "./excel_files/"
 app_vars$demo_files <- "./demo_files/"
-app_vars$demo_date <- lubridate::as_date("2020-05-22")
-app_vars$demo_now <- lubridate::as_date("2020-05-22")
+app_vars$demo_date <- lubridate::as_datetime("2020-05-22 09:00:00")
+app_vars$demo_now <- lubridate::as_datetime("2020-05-22 09:00:00")
 app_vars$demo_flexreport <- "https://carlosyanez.github.io/FlexDashboard_demo.html"
 
 app_vars$today<-if(app_vars$source_system=="Demo"){app_vars$demo_now}else{Sys.Date()}

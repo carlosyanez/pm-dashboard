@@ -26,3 +26,4 @@ shiny/trello_secret_mine.txt
 shiny/files/*.rds
 reports/.DS_Store
 shiny/rsconnect/shinyapps.io/carlosyanezs/PMDashboard.dcf
+.DS_Store
