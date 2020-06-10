@@ -293,7 +293,9 @@ tab_dashboard_1.5 <- fluidRow(
 
 # Define UI for application that draws a histogram
 
-header <- semantic.dashboard::dashboardHeader(title = "Projects Dashboard", inverted=TRUE)
+header <- semantic.dashboard::dashboardHeader(title = "Projects Dashboard", 
+                                             # tags$head(includeHTML(("google_analytics.html"))), # put tracking code in html file
+                                              inverted=TRUE)
 
 sidebar <- semantic.dashboard::dashboardSidebar(sidebarMenu(
     menuItem(tabName = "home", text = "Home", icon = icon("home")),
