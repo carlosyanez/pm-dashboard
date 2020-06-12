@@ -366,7 +366,9 @@ ui <-  semantic.dashboard::dashboardPage(header,sidebar,body,theme = app_vars$th
 
 # Define server logic required to draw a histogram
 server <- function(input, output,session) {
-   
+
+source("./r/eval.R", echo = F, prompt.echo = "", spaced = F)
+  
 message(paste("Starting Load"))
 app_vars$today<-if(app_vars$source_system=="Demo"){app_vars$demo_now}else{Sys.Date()}
   
@@ -449,7 +451,10 @@ if(app_vars$source_system=="Demo"){
                      message("Data Sourced:")
                      message(nrow(normalised_data$projects))
                      
-                     source("./r/eval.R", echo = F, prompt.echo = "", spaced = F)
+                   #  source("./r/eval.R", echo = F, prompt.echo = "", spaced = F)
+                     presentation_data <- eval_data(normalised_data,app_vars)
+                     app_vars$default_project <- presentation_data$projects[1,]$Name
+                     
                      
                      message("Data Evaluated")
                      message(nrow(presentation_data$projects))
@@ -589,7 +594,9 @@ if(app_vars$source_system=="Demo"){
         }else
         {
             source("./r/data_loader.R", echo = F, prompt.echo = "", spaced = F)
-            source("./r/eval.R", echo = F, prompt.echo = "", spaced = F)
+            #source("./r/eval.R", echo = F, prompt.echo = "", spaced = F)
+            presentation_data <- eval_data(normalised_data,app_vars)
+            app_vars$default_project <- presentation_data$projects[1,]$Name
             
             
             normalised_data$data_retrieved <- normalised_data$data_retrieved <- if(app_vars$source_system=="Demo"){app_vars$demo_now}else{lubridate::now()}
@@ -640,8 +647,9 @@ if(app_vars$source_system=="Demo"){
         
         }else{
             source("./r/data_loader.R", echo = F, prompt.echo = "", spaced = F)
-            source("./r/eval.R", echo = F, prompt.echo = "", spaced = F)
-            
+            #source("./r/eval.R", echo = F, prompt.echo = "", spaced = F)
+            presentation_data <- eval_data(normalised_data,app_vars)
+            app_vars$default_project <- presentation_data$projects[1,]$Name
             
             normalised_data$data_retrieved <- normalised_data$data_retrieved <- if(app_vars$source_system=="Demo"){app_vars$demo_now}else{lubridate::now()}
             presentation_data$data_retrieved <- normalised_data$data_retrieved <- if(app_vars$source_system=="Demo"){app_vars$demo_now}else{lubridate::now()}

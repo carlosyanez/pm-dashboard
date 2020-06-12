@@ -392,16 +392,6 @@ trello_normalise <-function(trello,programme_board,tasks_states){
   output
 }
 
-##code to run
 
-my_token <- trello_token(app_vars$trello_key)
-trello<-trello_retrieve_data(my_token)
-normalised_data <- trello_normalise(trello,app_vars$programme_board,app_vars$tasks_states)
-normalised_data$data_retrieved <- if(app_vars$source_system=="Demo"){app_vars$demo_now}else{lubridate::now()}
-
-#rm(my_token,trello)
-#rm(app_vars$trello_key)
-
-message("Trello Data Loaded")
   
  

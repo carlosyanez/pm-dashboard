@@ -284,7 +284,7 @@ eval_issues <- function(normalised_data,
   
 }
 
-eval_projects <- function(normalised_data,
+eval_projects <- function(presentation_data,normalised_data,
                           app_vars){
   
   task_start <- presentation_data$tasks %>% 
@@ -620,7 +620,6 @@ eval_project_updates <- function(normalised_data){
     select(Project=Name,Update=comment_updated,Done=Done,ToDo=ToDo) %>% filter(!is.na(strftime(Update)))
 }
 
-
 eval_stats <- function(presentation_data){
   programme_stats <- presentation_data$projects %>%group_by(State) %>% summarise(by_state=n()) %>% 
   mutate(key="Stats") %>%
@@ -693,7 +692,6 @@ eval_consolidated_items <- function(presentation_data){
   
 }
 
-
 eval_items_stats <- function(t.consolidated_tasks){
   
   output <-vector(mode = "list", length = 0)
@@ -723,6 +721,7 @@ eval_items_stats <- function(t.consolidated_tasks){
   
 }
 
+eval_data <-function(normalised_data,app_vars){
 
 presentation_data <-vector(mode = "list", length = 0)
 
@@ -732,18 +731,17 @@ presentation_data$actions<- eval_actions(normalised_data,app_vars)
 
 presentation_data$issues<- eval_issues(normalised_data,app_vars)
 
-presentation_data$projects<- eval_projects(normalised_data,app_vars)
+presentation_data$projects<- eval_projects(presentation_data,normalised_data,app_vars)
 
 presentation_data$programme_stats <- eval_stats(presentation_data)
-
 presentation_data$t.consolidated_tasks <- eval_consolidated_items(presentation_data)
 
 presentation_data$consolidated_stats <- eval_items_stats(presentation_data$t.consolidated_tasks)
 
 presentation_data$updates <- eval_project_updates(normalised_data)
 
+presentation_data
 
-app_vars$default_project <- presentation_data$projects[1,]$Name
+}
 
-message("Data Evaluated")
 
