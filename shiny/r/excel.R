@@ -12,8 +12,10 @@ get_project_board <- function(file_location,file_name="Projects.xlsx",url_value)
                                                     #               "numeric", "text", "text", "text"))
   
   output$Project_Updates <- readxl::read_excel(projects_file, 
-                                        sheet = "Updates", col_types = c("text", 
-                                                                         "text", "text", "text"))
+                                        sheet = "Updates")#, col_types = c("text", 
+                                                           #              "text", "text", "text"))
+  
+
   
   output$Project_Actions <- readxl::read_excel(projects_file, 
                                         sheet = "Actions")#, col_types = c("text", 
@@ -78,8 +80,8 @@ get_excel_tasks <- function(file_location,files,url_value,date_last_activity){
 
 get_excel_comments <- function(file_location,files,Project_Updates,url_value){
   
-  #files  <- board_data$files
-  #Project_Updates <- board_data$Project_Updates
+# files  <- board_data$files
+#  Project_Updates <- board_data$Project_Updates
 
   i<-1
   
@@ -87,13 +89,12 @@ get_excel_comments <- function(file_location,files,Project_Updates,url_value){
                                        sheet = "Updates")#,
   #col_types = c("text", "text", "text"))
   
+  project_update<- project_update[,1:3] %>%  mutate(ProjectID=files[i,]$No,
+                                                         Project=files[i,]$"Project Name") 
+  
   if(nrow(files)>1){
     
     for (i in 2:nrow(files)){
-  
-  project_update <- project_update[,1:3] %>%  mutate(ProjectID=files[i,]$No,
-                                                     Project=files[i,]$"Project Name") 
-  
   
   project_update_i <- readxl::read_excel(paste(file_location,files[i,]$name,sep=""), 
                                          sheet = "Updates")#,
@@ -112,17 +113,21 @@ get_excel_comments <- function(file_location,files,Project_Updates,url_value){
   #comments
   #"","id","card_id","author","comment","date","Done","ToDo"
   
-  comments <- rbind( Project_Updates %>% mutate(ToDo="") %>%
-                             select(Date,
+  comments <- rbind(Project_Updates %>% 
+                       mutate(ToDo="",
+                              date=lubridate::as_date(Date)) %>%
+                             select(date,
                                     Done="Update/Comments",
                                     ToDo,ProjectID=No,Project),
-                           project_update %>% select(Date,Done,ToDo="To Do",
+                           project_update %>%
+                           mutate(date=lubridate::as_date(Date, tz = NULL)) %>%
+                           select(date,Done,ToDo="To Do",
                                                      ProjectID,Project)) %>% 
-    mutate(id = paste("comment",1:n(),sep="-"),
+    mutate(id=as.character(ProjectID),
+           #id = paste("comment",1:n(),sep="-"),
            author="",
-           comment=paste(Done,ToDo,sep="-"),
-           date=lubridate::as_date(Date, tz = NULL)) %>%
-    select(id,card_id=ProjectID,author,comment,date=date,Done,ToDo)
+           comment=paste("{Done}:  ",Done,"{To Do}:  ",ToDo,sep="")) %>%
+    select(id,card_id=ProjectID,author,comment,date,Done,ToDo)
   
   
   comments

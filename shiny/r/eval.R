@@ -96,7 +96,8 @@ eval_tasks <- function(normalised_data,
     group_by(card_id,date) %>% 
     mutate(comment = paste0(comment, collapse = ", ")) %>%
     ungroup() %>%
-    unique(.) %>% mutate(comment = paste(date, comment, sep = ": ")) %>%
+    unique(.) %>% mutate(comment = paste(date, comment, sep = ": "),
+                         card_id=as.character(card_id)) %>%
     select(id=card_id,comment)
   
   
@@ -240,7 +241,8 @@ eval_issues <- function(normalised_data,
     group_by(card_id,date) %>% 
     mutate(comment = paste0(comment, collapse = ", ")) %>%
     ungroup() %>%
-    unique(.) %>% mutate(comment = paste(date, comment, sep = ": ")) %>%
+    unique(.) %>% mutate(comment = paste(date, comment, sep = ": "),
+                         card_id=as.character(card_id)) %>%
     select(id=card_id,comment)
   
   
@@ -382,7 +384,8 @@ eval_projects <- function(presentation_data,normalised_data,
                         comment),
            ToDo = ifelse(Done_flag,
                          str_sub(comment,start=mkr2+10,end=mkr3),
-                         "")) %>% 
+                         ""),
+           card_id=as.character(card_id)) %>% 
     select(id=card_id,comment,comment_updated=date,Done,ToDo)
   
   
