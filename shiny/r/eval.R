@@ -96,8 +96,7 @@ eval_tasks <- function(normalised_data,
     group_by(card_id,date) %>% 
     mutate(comment = paste0(comment, collapse = ", ")) %>%
     ungroup() %>%
-    unique(.) %>% mutate(comment = paste(date, comment, sep = ": "),
-                         card_id=as.character(card_id)) %>%
+    unique(.) %>% mutate(comment = paste(date, comment, sep = ": ")) %>%
     select(id=card_id,comment)
   
   
@@ -241,8 +240,7 @@ eval_issues <- function(normalised_data,
     group_by(card_id,date) %>% 
     mutate(comment = paste0(comment, collapse = ", ")) %>%
     ungroup() %>%
-    unique(.) %>% mutate(comment = paste(date, comment, sep = ": "),
-                         card_id=as.character(card_id)) %>%
+    unique(.) %>% mutate(comment = paste(date, comment, sep = ": ")) %>%
     select(id=card_id,comment)
   
   
@@ -286,7 +284,7 @@ eval_issues <- function(normalised_data,
   
 }
 
-eval_projects <- function(presentation_data,normalised_data,
+eval_projects <- function(normalised_data,
                           app_vars){
   
   task_start <- presentation_data$tasks %>% 
@@ -384,8 +382,7 @@ eval_projects <- function(presentation_data,normalised_data,
                         comment),
            ToDo = ifelse(Done_flag,
                          str_sub(comment,start=mkr2+10,end=mkr3),
-                         ""),
-           card_id=as.character(card_id)) %>% 
+                         "")) %>% 
     select(id=card_id,comment,comment_updated=date,Done,ToDo)
   
   
@@ -623,6 +620,7 @@ eval_project_updates <- function(normalised_data){
     select(Project=Name,Update=comment_updated,Done=Done,ToDo=ToDo) %>% filter(!is.na(strftime(Update)))
 }
 
+
 eval_stats <- function(presentation_data){
   programme_stats <- presentation_data$projects %>%group_by(State) %>% summarise(by_state=n()) %>% 
   mutate(key="Stats") %>%
@@ -669,7 +667,7 @@ eval_consolidated_items <- function(presentation_data){
                                              t.State,t.due),
                                     presentation_data$issues %>% mutate(Type="Issue") %>%
                                       select(Type,Project,Item=Title,State,assignee=Assignee,
-                                             due,RAG,RAG_colour,t.RAG,
+                                             due,RAG,t.RAG,
                                              t.Project=Project,
                                              t.Item=t.Title,
                                              t.assignee=t.Assignee,
@@ -694,6 +692,7 @@ eval_consolidated_items <- function(presentation_data){
   t.consolidated_tasks
   
 }
+
 
 eval_items_stats <- function(t.consolidated_tasks){
   
@@ -724,7 +723,6 @@ eval_items_stats <- function(t.consolidated_tasks){
   
 }
 
-eval_data <-function(normalised_data,app_vars){
 
 presentation_data <-vector(mode = "list", length = 0)
 
@@ -734,17 +732,18 @@ presentation_data$actions<- eval_actions(normalised_data,app_vars)
 
 presentation_data$issues<- eval_issues(normalised_data,app_vars)
 
-presentation_data$projects<- eval_projects(presentation_data,normalised_data,app_vars)
+presentation_data$projects<- eval_projects(normalised_data,app_vars)
 
 presentation_data$programme_stats <- eval_stats(presentation_data)
+
 presentation_data$t.consolidated_tasks <- eval_consolidated_items(presentation_data)
 
 presentation_data$consolidated_stats <- eval_items_stats(presentation_data$t.consolidated_tasks)
 
 presentation_data$updates <- eval_project_updates(normalised_data)
 
-presentation_data
 
-}
+app_vars$default_project <- presentation_data$projects[1,]$Name
 
+message("Data Evaluated")
 
