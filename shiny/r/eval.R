@@ -669,7 +669,7 @@ eval_consolidated_items <- function(presentation_data){
                                              t.State,t.due),
                                     presentation_data$issues %>% mutate(Type="Issue") %>%
                                       select(Type,Project,Item=Title,State,assignee=Assignee,
-                                             due,RAG,t.RAG,
+                                             due,RAG,RAG_colour,t.RAG,
                                              t.Project=Project,
                                              t.Item=t.Title,
                                              t.assignee=t.Assignee,
